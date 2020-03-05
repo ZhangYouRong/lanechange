@@ -15,6 +15,6 @@ FUNCTION:
 
 HOW TO START:
 
-1.run the server: arlaUE4.exe -benchmark -FPS=20
+1.run the server: CarlaUE4.exe -benchmark -FPS=20
 
 2.run: main.py 

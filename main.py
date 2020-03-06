@@ -35,9 +35,8 @@ VEHICLE_START_LOCATION = {'x': 46, 'y': 7.2, 'z': 0}  # 我是通过manual_contr
 PIDCONTROLLER_TIME_PERIOD = 0.05  # 0.05s
 KLIST = np.linspace(43/540, 53/540, 11)
 LLIST = np.linspace(0.10, 0.14, 9)
-
-
-# 49/540 0.0115
+# BEST PARAMETER:
+# K=49/540 L=0.115
 
 def plot_data(data):
     fontdict = {'weight': 'normal', 'size': 20}

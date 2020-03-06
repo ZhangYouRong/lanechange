@@ -122,7 +122,8 @@ if __name__ == '__main__':
             lane_change_agent.lane_change_flag = RoadOption.CHANGELANELEFT
 
     data = np.array(lane_change_agent.data).transpose()
-    J = 0.2*sum((data[3]/(0.3*9.8))**2*PIDCONTROLLER_TIME_PERIOD)+0.8*lane_change_agent.lane_change_duration
+    J = 0.2*sum((data[3]/(0.3*9.8))**2*PIDCONTROLLER_TIME_PERIOD) \
+                +0.8*sum((data[5]/(3.5))**2*PIDCONTROLLER_TIME_PERIOD)
     print('Time spend on lane change:%f'%lane_change_agent.lane_change_duration)
     print('J:%f'%J)
     plot_data(data)

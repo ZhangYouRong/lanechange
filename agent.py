@@ -15,8 +15,8 @@ args_lateral_dict = {
     'K_I': 0,
     'dt': 1.0/20.0,
     # distance method
-    'K': 20/540,
-    'Lookahead_Distance': 0.3,
+    'K': 49/540,
+    'Lookahead_Distance': 0.115,
 }
 args_longitudinal_dict = {
     'K_P': 0.1,

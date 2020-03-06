@@ -155,10 +155,10 @@ class Agent(object):
         self.d_lateral = misc.distance_point_to_line(self.target_waypoint, transform)
         self.volocity = misc.get_speed(self._vehicle)
 
-        print('x= %f'%self.x, 'y= %f'%self.y,
-              'yaw= %f'%self.yaw, 'a_lateral= %f'%self.a_lateral,
-              'jerk=%f'%self.jerk, 'simulation_time=%f'%simulation_time,
-              'd_lateral= %f'%self.d_lateral, 'v= %f'%self.volocity)
+        # print('x= %f'%self.x, 'y= %f'%self.y,
+        #       'yaw= %f'%self.yaw, 'a_lateral= %f'%self.a_lateral,
+        #       'jerk=%f'%self.jerk, 'simulation_time=%f'%simulation_time,
+        #       'd_lateral= %f'%self.d_lateral, 'v= %f'%self.volocity)
 
         if self.lane_change_start is None and abs(self.d_lateral) > 2.5:
             self.lane_change_start = simulation_time

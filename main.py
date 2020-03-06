@@ -26,13 +26,18 @@ import controller
 
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 TOWN = 'Town03'
 VEHICLE_TYPE = 'vehicle.tesla.model3'
 VEHICLE_COLOR_RGB = '255,255,255'
 VEHICLE_START_LOCATION = {'x': 46, 'y': 7.2, 'z': 0}  # 我是通过manual_control.py手动测的坐标
 PIDCONTROLLER_TIME_PERIOD = 0.05  # 0.05s
+KLIST = np.linspace(43/540, 53/540, 11)
+LLIST = np.linspace(0.10, 0.14, 9)
 
+
+# 49/540 0.0115
 
 def plot_data(data):
     fontdict = {'weight': 'normal', 'size': 20}
@@ -92,47 +97,68 @@ if __name__ == '__main__':
 
     bp = blueprint_library.find(VEHICLE_TYPE)
     bp.set_attribute('color', VEHICLE_COLOR_RGB)
-    actor_list = []
+
     map = world.get_map()
     start_waypoint = map.get_waypoint(carla.Location(x=VEHICLE_START_LOCATION['x'],
                                                      y=VEHICLE_START_LOCATION['y'],
                                                      z=VEHICLE_START_LOCATION['z']))
     spawn_point = carla.Transform(start_waypoint.transform.location, start_waypoint.transform.rotation)
 
-    # episode circulation
-    vehicle = world.spawn_actor(bp, spawn_point)
-    actor_list.append(vehicle)
-    print('created %s'%vehicle.type_id)
+    a = np.zeros((len(KLIST), len(LLIST)))
 
-    world.tick()
-    tick = world.wait_for_tick()
-    start_world_time = tick.elapsed_seconds
-    simulation_time = 0
-    lane_change_agent = Agent(vehicle, PIDCONTROLLER_TIME_PERIOD)
-    lane_change_agent.run_step(simulation_time)
+    for i, K in enumerate(KLIST):
+        for j, L in enumerate(LLIST):
+            agent.args_lateral_dict['K'] = K
+            agent.args_lateral_dict['Lookahead_Distance'] = L
+            # episode circulation
+            vehicle = world.spawn_actor(bp, spawn_point)
+            actor_list = []
+            actor_list.append(vehicle)
+            # print('created %s'%vehicle.type_id)
 
-    while simulation_time < 25:  # 25s后跳出循环
-        world.tick()  # Initialize a new "tick" in the simulator.
-        tick = world.wait_for_tick()  # Wait until we listen to the new tick.
-        simulation_time = tick.elapsed_seconds-start_world_time
-        lane_change_agent.run_step(simulation_time)
-        # apply control and get data
+            world.tick()
+            tick = world.wait_for_tick()
+            start_world_time = tick.elapsed_seconds
+            simulation_time = 0
+            lane_change_agent = Agent(vehicle, PIDCONTROLLER_TIME_PERIOD)
+            lane_change_agent.run_step(simulation_time)
 
-        if lane_change_agent.change_times == 0 and simulation_time > 7:
-            lane_change_agent.lane_change_flag = RoadOption.CHANGELANELEFT
+            while simulation_time < 25:  # 25s后跳出循环
+                world.tick()  # Initialize a new "tick" in the simulator.
+                tick = world.wait_for_tick()  # Wait until we listen to the new tick.
+                simulation_time = tick.elapsed_seconds-start_world_time
+                lane_change_agent.run_step(simulation_time)
+                # apply control and get data
 
-    data = np.array(lane_change_agent.data).transpose()
-    J = 0.2*sum((data[3]/(0.3*9.8))**2*PIDCONTROLLER_TIME_PERIOD)+0.8*lane_change_agent.lane_change_duration
-    print('Time spend on lane change:%f'%lane_change_agent.lane_change_duration)
-    print('J:%f'%J)
-    plot_data(data)
+                if lane_change_agent.change_times == 0 and simulation_time > 7:
+                    lane_change_agent.lane_change_flag = RoadOption.CHANGELANELEFT
 
-    # destroy
+            data = np.array(lane_change_agent.data).transpose()
+            J = 0.2*sum((data[3]/(0.3*9.8))**2*PIDCONTROLLER_TIME_PERIOD) \
+                +0.8*sum((data[5]/(3.5))**2*PIDCONTROLLER_TIME_PERIOD)
+            print('K:%f'%K, 'L:%f'%L,
+                  'Time spend:%f'%lane_change_agent.lane_change_duration, 'J:%f'%J)
+
+            a[i][j] = J
+            # plot_data(data)
+
+            # destroy
+            del lane_change_agent
+            for actor in actor_list:
+                actor.destroy()
+
     print('\ndisabling synchronous mode.')
     settings = world.get_settings()
     settings.synchronous_mode = False
     world.apply_settings(settings)
 
-    for actor in actor_list:
-        actor.destroy()
-        print("All cleaned up!")
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1, projection='3d')
+    x, y = np.meshgrid(LLIST, KLIST)
+
+    ax.plot_surface(x, y, a, cmap='rainbow')
+    ax.set_xlabel('K')
+    ax.set_ylabel('L',)
+    ax.set_zlabel('J')
+    plt.show()
+    print(a.min())

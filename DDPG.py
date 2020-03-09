@@ -26,7 +26,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--mode', default='train', type=str)  # mode = 'train' or 'test'
 # Note that DDPG is feasible about hyper-parameters.
 # You should fine-tuning if you change to another environment.
-parser.add_argument("--env_name", default="Carla 0.9.5 Win")
+parser.add_argument("--env_name", default="Carla_0.9.5")
 parser.add_argument('--tau', default=0.005, type=float)  # target smoothing coefficient
 # parser.add_argument('--target_update_interval', default=1, type=int)
 parser.add_argument('--test_iteration', default=10, type=int)
@@ -50,7 +50,8 @@ parser.add_argument('--update_iteration', default=10, type=int) # every step rep
 args = parser.parse_args()
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-script_name = os.path.basename(__file__)
+# script_name = os.path.basename(__file__)
+script_name=os.path.basename(os.path.splitext(__file__)[0])
 env = Env()
 
 if args.seed:

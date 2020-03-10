@@ -45,7 +45,7 @@ parser.add_argument('--load', default=False, type=bool)  # load model (only avai
 parser.add_argument('--exploration_noise', default=0.1, type=float)
 parser.add_argument('--max_episode', default=10000, type=int)  # num of games
 parser.add_argument('--max_length_of_time', default=35, type=int)  # num of games
-parser.add_argument('--print_log', default=100, type=int)  # num of steps to print log
+parser.add_argument('--print_log', default=10, type=int)  # num of steps to print log
 parser.add_argument('--update_iteration', default=10, type=int) # every step replay 10 batches for update
 args = parser.parse_args()
 

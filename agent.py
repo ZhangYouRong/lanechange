@@ -59,7 +59,7 @@ class Agent(object):
         self._target_road_option = None
         self.lane_change_flag = RoadOption.LANEFOLLOW
         self.lane_change_start = None
-        self.lane_change_duration = 0
+        self.lane_change_duration = None
 
         self.change_times = 0
         self.target_waypoint = self._current_waypoint
@@ -162,8 +162,9 @@ class Agent(object):
 
         if self.lane_change_start is None and abs(self.d_lateral) > 2.5:
             self.lane_change_start = simulation_time
-        if self.lane_change_start is not None and abs(self.d_lateral) < 0.25:
-            self.lane_change_duration = simulation_time-self.lane_change_start
+        if self.lane_change_start is not None and self.lane_change_duration is None:
+            if abs(self.d_lateral) < 0.25:
+                self.lane_change_duration = simulation_time-self.lane_change_start
 
         if self.data is not None:
             self.data = self.data+[[simulation_time, self.volocity,

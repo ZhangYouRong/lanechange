@@ -1,14 +1,10 @@
-# must run the server in stable FPS=20
-# for windows, enter this in the command line (in the root directory of carla)
-# D:\software\CARLA_0.9.5\CarlaUE4.exe -benchmark -FPS=20
-
-
+# C:\Program Files\Carla 0.9.8\CarlaUE4.exe
 import glob
 import os
 import sys
 
 try:
-    sys.path.append(glob.glob('D:\software\CARLA_0.9.5\PythonAPI\carla\dist\carla-*%d.%d-%s.egg'%(
+    sys.path.append(glob.glob('C:\Program Files\Carla 0.9.8\PythonAPI\carla\dist\carla-*%d.%d-%s.egg'%(
         sys.version_info.major,
         sys.version_info.minor,
         'win-amd64' if os.name == 'nt' else 'linux-x86_64'))[0])
@@ -30,7 +26,7 @@ import matplotlib.pyplot as plt
 TOWN = 'Town03'
 VEHICLE_TYPE = 'vehicle.tesla.model3'
 VEHICLE_COLOR_RGB = '255,255,255'
-VEHICLE_START_LOCATION = {'x': 46, 'y': 7.2, 'z': 0}  # 我是通过manual_control.py手动测的坐标
+VEHICLE_START_LOCATION = {'x':42, 'y': 7.2, 'z': 0}  # 我是通过manual_control.py手动测的坐标
 PIDCONTROLLER_TIME_PERIOD = 0.05  # 0.05s
 
 
@@ -98,23 +94,23 @@ if __name__ == '__main__':
                                                      y=VEHICLE_START_LOCATION['y'],
                                                      z=VEHICLE_START_LOCATION['z']))
     spawn_point = carla.Transform(start_waypoint.transform.location, start_waypoint.transform.rotation)
-
+    spawn_point.location.z+=0.015
     # episode circulation
     vehicle = world.spawn_actor(bp, spawn_point)
     actor_list.append(vehicle)
     print('created %s'%vehicle.type_id)
 
     world.tick()
-    tick = world.wait_for_tick()
-    start_world_time = tick.elapsed_seconds
+    world_snapshot = world.get_snapshot()
+    start_world_time = world_snapshot.timestamp.elapsed_seconds
     simulation_time = 0
     lane_change_agent = Agent(vehicle, PIDCONTROLLER_TIME_PERIOD)
     lane_change_agent.run_step(simulation_time)
 
     while simulation_time < 25:  # 25s后跳出循环
         world.tick()  # Initialize a new "tick" in the simulator.
-        tick = world.wait_for_tick()  # Wait until we listen to the new tick.
-        simulation_time = tick.elapsed_seconds-start_world_time
+        world_snapshot = world.get_snapshot()  # Wait until we listen to the new tick.
+        simulation_time = world_snapshot.timestamp.elapsed_seconds-start_world_time
         lane_change_agent.run_step(simulation_time)
         # apply control and get data
 

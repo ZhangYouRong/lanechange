@@ -15,6 +15,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Normal
 from torch.utils.tensorboard import SummaryWriter
+import time
 
 '''
 Implementation of Deep Deterministic Policy Gradients (DDPG) with pytorch 
@@ -26,7 +27,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--mode', default='train', type=str)  # mode = 'train' or 'test'
 # Note that DDPG is feasible about hyper-parameters.
 # You should fine-tuning if you change to another environment.
-parser.add_argument("--env_name", default="Carla_0.9.5")
+parser.add_argument("--env_name", default="Carla_0.9.8")
 parser.add_argument('--tau', default=0.005, type=float)  # target smoothing coefficient
 # parser.add_argument('--target_update_interval', default=1, type=int)
 parser.add_argument('--test_iteration', default=10, type=int)
@@ -44,14 +45,14 @@ parser.add_argument('--log_interval', default=50, type=int)  # saving interval o
 parser.add_argument('--load', default=False, type=bool)  # load model (only available on test mode)
 parser.add_argument('--exploration_noise', default=0.1, type=float)
 parser.add_argument('--max_episode', default=10000, type=int)  # num of games
-parser.add_argument('--max_length_of_time', default=35, type=int)  # num of games
+parser.add_argument('--max_length_of_time', default=30, type=int)  # num of games
 parser.add_argument('--print_log', default=10, type=int)  # num of steps to print log
-parser.add_argument('--update_iteration', default=10, type=int) # every step replay 10 batches for update
+parser.add_argument('--update_iteration', default=10, type=int)  # every step replay 10 batches for update
 args = parser.parse_args()
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # script_name = os.path.basename(__file__)
-script_name=os.path.basename(os.path.splitext(__file__)[0])
+script_name = os.path.basename(os.path.splitext(__file__)[0])
 env = Env()
 
 if args.seed:
@@ -127,7 +128,7 @@ class Critic(nn.Module):
         self.l3 = nn.Linear(300, 1)
 
     def forward(self, x, u):
-        x = F.relu(self.l1(torch.cat([x, u], 1)))
+        x = F.relu(self.l1(torch.cat([x, u], 1)))  # x,u行数相同按列合并
         x = F.relu(self.l2(x))
         x = self.l3(x)
         return x
@@ -236,33 +237,41 @@ def main():
         print("====================================")
         print("Collection Experience...")
         print("====================================")
+
         if args.load:
             ddpg_agent.load()
         for i in range(args.max_episode):
             state = env.reset()
             for t in count():
-                action = ddpg_agent.select_action(state)
+                try:
+                    action = ddpg_agent.select_action(state)
 
-                # issue 3 add noise to action
-                action = (action+np.random.normal(0, args.exploration_noise, size=env.action_dim)).clip(
-                    env.action_space_low, env.action_space_high)
+                    # issue 3 add noise to action
+                    action = (action+np.random.normal(0, args.exploration_noise, size=env.action_dim)).clip(
+                        env.action_space_low, env.action_space_high)
 
-                next_state, reward, done, info = env.step(action)
-                ep_r += reward
-                ddpg_agent.replay_buffer.push((state, next_state, action, reward, np.float(done)))
+                    next_state, reward, done, info = env.step(action)
+                    ep_r += reward
+                    ddpg_agent.replay_buffer.push((state, next_state, action, reward, np.float(done)))
 
-                state = next_state
-                if  env.simulation_time > args.max_length_of_time:  # 一个episode结束
-                    ddpg_agent.writer.add_scalar('ep_r', ep_r, global_step=i)
-                    if i%args.print_log == 0:
-                        print("Ep_i \t{}, the ep_r is \t{:0.2f}, the step is \t{}".format(i, ep_r, t))
-                    ep_r = 0
-                    break
+                    state = next_state
+                    if env.simulation_time > args.max_length_of_time:  # 一个episode结束
+                        ddpg_agent.writer.add_scalar('ep_r', ep_r, global_step=i)
+                        if i%args.print_log == 0:
+                            print(
+                                "Ep_i \t{}, the ep_r is \t{:0.2f}, the step is \t{},done \t{}".format(i, ep_r, t, done))
+                        ep_r = 0
+                        break
+
+                except RuntimeError:
+                    print("trying to reconnect")
+                    time.sleep(5.0)
 
             if i%args.log_interval == 0:
                 ddpg_agent.save()
             if len(ddpg_agent.replay_buffer.storage) >= args.capacity-1:  # 开始更新网络学习
                 ddpg_agent.update()
+
 
     else:
         raise NameError("mode wrong!!!")

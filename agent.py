@@ -26,6 +26,8 @@ args_longitudinal_dict = {
 TARGET_SPEED = 20
 BIAS = 3.15
 MIN_DISTANCE_PERCENTAGE = 0.9
+D_LATERAL_RANGE=3.5
+DELTA_FI_RANGE=20
 
 
 class RoadOption(Enum):
@@ -166,8 +168,9 @@ class Agent(object):
 
         if self.lane_change_start is None and abs(self.d_lateral) > 2.5:
             self.lane_change_start = simulation_time
-        if self.lane_change_start is not None and abs(self.d_lateral) < 0.1:
-            self.lane_change_duration = simulation_time-self.lane_change_start
+        if self.lane_change_start is not None and self.lane_change_duration is None:
+            if abs(self.d_lateral) < 0.25:
+                self.lane_change_duration = simulation_time-self.lane_change_start
 
         if self.data is not None:
             self.data = self.data+[[simulation_time, self.volocity,
@@ -180,7 +183,8 @@ class Agent(object):
                           self.jerk, self.d_lateral,
                           self.x, self.y]]
 
-        return np.array((self.d_lateral, self.delta_fi))
+        return np.array((self.d_lateral/D_LATERAL_RANGE,
+                         self.delta_fi/DELTA_FI_RANGE))
 
     def _compute_next_waypoints(self, k=1, lane_change_flag=RoadOption.LANEFOLLOW):
         """

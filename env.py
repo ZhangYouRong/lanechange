@@ -3,7 +3,7 @@ import os
 import sys
 
 try:
-    sys.path.append(glob.glob('D:\software\CARLA_0.9.5\PythonAPI\carla\dist\carla-*%d.%d-%s.egg'%(
+    sys.path.append(glob.glob('C:\Program Files\Carla 0.9.8\PythonAPI\carla\dist\carla-*%d.%d-%s.egg'%(
         sys.version_info.major,
         sys.version_info.minor,
         'win-amd64' if os.name == 'nt' else 'linux-x86_64'))[0])
@@ -13,6 +13,7 @@ except IndexError:
 import carla
 import agent
 import numpy as np
+
 
 
 class Env:
@@ -50,6 +51,7 @@ class Env:
                                                          z=self.VEHICLE_START_LOCATION['z']))
         self.spawn_point = carla.Transform(start_waypoint.transform.location,
                                            start_waypoint.transform.rotation)
+        self.spawn_point.location.z += 0.015  # without this may lead to collision error for spawn operation
         self.actor_list = []
         self.lane_change_agent=None
         self.reset()
@@ -66,8 +68,8 @@ class Env:
         self.actor_list.append(self.vehicle)
 
         self.world.tick()
-        tick = self.world.wait_for_tick()
-        self.episode_start_time = tick.elapsed_seconds
+        world_snapshot = self.world.get_snapshot()
+        self.episode_start_time = world_snapshot.timestamp.elapsed_seconds
         self.simulation_time = 0
         self.lane_change_agent = agent.Agent(self.vehicle, self.PIDCONTROLLER_TIME_PERIOD)
         next_state = self.lane_change_agent.get_current_data(self.simulation_time)
@@ -78,9 +80,10 @@ class Env:
         control.steer = action[0]
         self.vehicle.apply_control(control)
 
-        self.world.tick()  # Initialize a new "tick" in the simulator.
-        tick = self.world.wait_for_tick()  # Wait until we listen to the new tick.
-        self.simulation_time = tick.elapsed_seconds-self.episode_start_time
+        self.world.tick()
+        world_snapshot = self.world.get_snapshot()
+        self.simulation_time = world_snapshot.timestamp.elapsed_seconds-self.episode_start_time
+
         next_state = self.lane_change_agent.get_current_data(self.simulation_time)
 
         if self.lane_change_agent.change_times == 0 and self.simulation_time > 7:
@@ -94,7 +97,6 @@ class Env:
         done = 0
         if self.lane_change_agent.lane_change_duration is not None:  # 换道结束
             done = 1
-            reward+=10
         return next_state, reward, done, None
 
     def __del__(self):

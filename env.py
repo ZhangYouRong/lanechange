@@ -15,7 +15,6 @@ import agent
 import numpy as np
 
 
-
 class Env:
     TOWN = 'Town03'
     VEHICLE_TYPE = 'vehicle.tesla.model3'
@@ -47,13 +46,13 @@ class Env:
 
         self.map = self.world.get_map()
         start_waypoint = self.map.get_waypoint(carla.Location(x=self.VEHICLE_START_LOCATION['x'],
-                                                         y=self.VEHICLE_START_LOCATION['y'],
-                                                         z=self.VEHICLE_START_LOCATION['z']))
+                                                              y=self.VEHICLE_START_LOCATION['y'],
+                                                              z=self.VEHICLE_START_LOCATION['z']))
         self.spawn_point = carla.Transform(start_waypoint.transform.location,
                                            start_waypoint.transform.rotation)
         self.spawn_point.location.z += 0.015  # without this may lead to collision error for spawn operation
         self.actor_list = []
-        self.lane_change_agent=None
+        self.lane_change_agent = None
         self.reset()
 
     def reset(self):
@@ -91,7 +90,7 @@ class Env:
 
         data = np.array(self.lane_change_agent.data).transpose()
         reward = -(0.2*(data[3][-1]/(0.3*9.8))**2*self.PIDCONTROLLER_TIME_PERIOD \
-                 +0.8*(data[5][-1]/3.5)**2*self.PIDCONTROLLER_TIME_PERIOD)
+                   +0.8*(data[5][-1]/3.5)**2*self.PIDCONTROLLER_TIME_PERIOD)
         # print('K:%f'%K, 'L:%f'%L,
         #       'Time spend:%f'%lane_change_agent.lane_change_duration, 'J:%f'%J)
         done = 0

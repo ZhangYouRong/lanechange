@@ -1,6 +1,5 @@
-# must run the server in stable FPS=20!
-# for windows, enter this in the command line (in the root directory of carla)
-# D:\software\CARLA_0.9.5\CarlaUE4.exe -benchmark -FPS=20
+# cd C:\Program Files\Carla 0.9.8
+# CarlaUE4.exe
 
 import argparse
 from itertools import count

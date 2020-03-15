@@ -1,5 +1,7 @@
-# cd C:\Program Files\Carla 0.9.8
-# CarlaUE4.exe
+# cd C:\Program Files\Carla
+# CarlaUE4.exe -benchmark -FPS=20
+# tensorboard --logdir=D:\software\CARLA_0.9.5\workspace\lanechange95\expDDPGCarla_0.9.5
+# http://localhost:6006
 
 import argparse
 from itertools import count
@@ -23,17 +25,17 @@ Not the author's implementation !
 '''
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--mode', default='train', type=str)  # mode = 'train' or 'test'
+parser.add_argument('--mode', default='nn', type=str)  # mode = 'train' or 'test'
 # Note that DDPG is feasible about hyper-parameters.
 # You should fine-tuning if you change to another environment.
-parser.add_argument("--env_name", default="Carla_0.9.8")
+parser.add_argument("--env_name", default="Carla_0.9.5")
 parser.add_argument('--tau', default=0.005, type=float)  # target smoothing coefficient
 # parser.add_argument('--target_update_interval', default=1, type=int)
 parser.add_argument('--test_iteration', default=10, type=int)
 
-parser.add_argument('--learning_rate', default=1e-3, type=float)
-parser.add_argument('--gamma', default=0.99, type=int)  # discounted factor
-parser.add_argument('--capacity', default=10000, type=int)  # replay buffer size
+parser.add_argument('--learning_rate', default=1e-2, type=float)
+parser.add_argument('--gamma', default=0.975, type=int)  # discounted factor
+parser.add_argument('--capacity', default=20000, type=int)  # replay buffer size
 parser.add_argument('--batch_size', default=32, type=int)  # mini batch size
 parser.add_argument('--seed', default=False, type=bool)
 parser.add_argument('--random_seed', default=9527, type=int)
@@ -42,7 +44,7 @@ parser.add_argument('--random_seed', default=9527, type=int)
 parser.add_argument('--sample_frequency', default=256, type=int)
 parser.add_argument('--log_interval', default=50, type=int)  # saving interval of steps
 parser.add_argument('--load', default=False, type=bool)  # load model (only available on test mode)
-parser.add_argument('--exploration_noise', default=0.1, type=float)
+parser.add_argument('--exploration_noise', default=0.5, type=float)
 parser.add_argument('--max_episode', default=10000, type=int)  # num of games
 parser.add_argument('--max_length_of_time', default=30, type=int)  # num of games
 parser.add_argument('--print_log', default=10, type=int)  # num of steps to print log
@@ -64,7 +66,8 @@ action_dim = env.action_dim
 max_action = float(env.max_action)
 min_Val = torch.tensor(1e-7).float().to(device)  # min value
 
-directory = './exp'+script_name+args.env_name+'./'
+# directory = './exp'+time.strftime('%Y-%m-%d %H-%M-%S', time.localtime(time.time()))+'./'
+directory = './exp2020-03-15 12-49-13./'
 
 
 class Replay_buffer():
@@ -105,15 +108,20 @@ class Actor(nn.Module):
     def __init__(self, state_dim, action_dim, max_action):
         super(Actor, self).__init__()
 
-        self.l1 = nn.Linear(state_dim, 400)
-        self.l2 = nn.Linear(400, 300)
-        self.l3 = nn.Linear(300, action_dim)
+        self.l1 = nn.Linear(state_dim, 20)
+        self.l2 = nn.Linear(20, 20)
+        self.l3 = nn.Linear(20, action_dim)
 
         self.max_action = max_action
 
+        self.l1out = 0
+        self.l2out = 0
+
     def forward(self, x):
         x = F.relu(self.l1(x))
+        self.l1out = x
         x = F.relu(self.l2(x))
+        self.l2out = x
         x = self.max_action*torch.tanh(self.l3(x))
         return x
 
@@ -122,13 +130,18 @@ class Critic(nn.Module):
     def __init__(self, state_dim, action_dim):
         super(Critic, self).__init__()
 
-        self.l1 = nn.Linear(state_dim+action_dim, 400)
-        self.l2 = nn.Linear(400, 300)
-        self.l3 = nn.Linear(300, 1)
+        self.l1 = nn.Linear(state_dim+action_dim, 30)
+        self.l2 = nn.Linear(30, 30)
+        self.l3 = nn.Linear(30, 1)
+
+        self.l1out=0
+        self.l2out = 0
 
     def forward(self, x, u):
         x = F.relu(self.l1(torch.cat([x, u], 1)))  # x,u行数相同按列合并
+        self.l1out=x
         x = F.relu(self.l2(x))
+        self.l2out = x
         x = self.l3(x)
         return x
 
@@ -223,11 +236,12 @@ def main():
             state = env.reset()
             for t in count():
                 action = ddpg_agent.select_action(state)
-                next_state, reward, done, info = env.step(np.float32(action))
+                next_state, reward, done, info = env.step(np.array(action, dtype=float))
                 ep_r += reward
                 # env.render()
-                if done or env.simulation_time > args.max_length_of_time:
-                    print("Ep_i \t{}, the ep_r is \t{:0.2f}, the step is \t{}".format(i, ep_r, t))
+                if env.simulation_time > args.max_length_of_time:  # 一个episode结束
+                    print(
+                        "Ep_i \t{}, the ep_r is \t{:0.2f}, the step is \t{},done \t{}".format(i, ep_r, t, done))
                     ep_r = 0
                     break
                 state = next_state
@@ -258,7 +272,7 @@ def main():
                         ddpg_agent.writer.add_scalar('ep_r', ep_r, global_step=i)
                         if i%args.print_log == 0:
                             print(
-                                "Ep_i \t{}, the ep_r is \t{:0.2f}, the step is \t{},done \t{}".format(i, ep_r, t, done))
+                                "Ep_i \t{}, the ep_r is \t{:0.2f}, the step is \t{},finish \t{}".format(i, ep_r, t, info))
                         ep_r = 0
                         break
 
@@ -270,6 +284,40 @@ def main():
                 ddpg_agent.save()
             if len(ddpg_agent.replay_buffer.storage) >= args.capacity-1:  # 开始更新网络学习
                 ddpg_agent.update()
+
+    elif args.mode == 'show':
+        ddpg_agent.load()
+        env.render_mode()
+        state = env.reset()
+        last_time = time.time()
+        for t in count():
+            action = ddpg_agent.select_action(state)
+            next_state, reward, done, info = env.step(np.array(action, dtype=float))
+            ep_r += reward
+            # env.render()
+            if env.simulation_time > args.max_length_of_time:  # 一个episode结束
+                print(
+                    "the ep_r is \t{:0.2f}, the step is \t{},done \t{}".format(ep_r, t, done))
+                ep_r = 0
+                break
+            state = next_state
+
+            while time.time()-last_time < 0.05:
+                pass
+            last_time = time.time()
+
+    elif args.mode == 'nn':
+        ddpg_agent.load()
+        state = np.array((3.5/1.2,
+                          5/10))
+        action=ddpg_agent.select_action(state)
+        s=torch.FloatTensor(state.reshape(1,-1)).to(device)
+        a=torch.FloatTensor(action.reshape(1,-1)).to(device)
+        ddpg_agent.critic(s,a)
+        print('actor_l1out', ddpg_agent.actor.l1out)
+        print('actor_l2out', ddpg_agent.actor.l2out)
+        print('critic_l1out', ddpg_agent.actor.l1out)
+        print('critic_l2out', ddpg_agent.actor.l2out)
 
 
     else:

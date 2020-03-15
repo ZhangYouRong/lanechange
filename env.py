@@ -3,7 +3,7 @@ import os
 import sys
 
 try:
-    sys.path.append(glob.glob('C:\Program Files\Carla 0.9.8\PythonAPI\carla\dist\carla-*%d.%d-%s.egg'%(
+    sys.path.append(glob.glob('D:\software\CARLA_0.9.5\PythonAPI\carla\dist\carla-*%d.%d-%s.egg'%(
         sys.version_info.major,
         sys.version_info.minor,
         'win-amd64' if os.name == 'nt' else 'linux-x86_64'))[0])
@@ -67,8 +67,8 @@ class Env:
         self.actor_list.append(self.vehicle)
 
         self.world.tick()
-        world_snapshot = self.world.get_snapshot()
-        self.episode_start_time = world_snapshot.timestamp.elapsed_seconds
+        tick = self.world.wait_for_tick()
+        self.episode_start_time = tick.elapsed_seconds
         self.simulation_time = 0
         self.lane_change_agent = agent.Agent(self.vehicle, self.PIDCONTROLLER_TIME_PERIOD)
         next_state = self.lane_change_agent.get_current_data(self.simulation_time)
@@ -80,8 +80,8 @@ class Env:
         self.vehicle.apply_control(control)
 
         self.world.tick()
-        world_snapshot = self.world.get_snapshot()
-        self.simulation_time = world_snapshot.timestamp.elapsed_seconds-self.episode_start_time
+        tick = self.world.wait_for_tick()
+        self.simulation_time = tick.elapsed_seconds-self.episode_start_time
 
         next_state = self.lane_change_agent.get_current_data(self.simulation_time)
 
@@ -91,15 +91,25 @@ class Env:
         data = np.array(self.lane_change_agent.data).transpose()
         reward = -(0.2*(data[3][-1]/(0.3*9.8))**2*self.PIDCONTROLLER_TIME_PERIOD \
                    +0.8*(data[5][-1]/3.5)**2*self.PIDCONTROLLER_TIME_PERIOD)
+        if data[1][-1]<3:
+            reward-=1*self.PIDCONTROLLER_TIME_PERIOD
         # print('K:%f'%K, 'L:%f'%L,
         #       'Time spend:%f'%lane_change_agent.lane_change_duration, 'J:%f'%J)
         done = 0
         if self.lane_change_agent.lane_change_duration is not None:  # 换道结束
-            done = 1
-        return next_state, reward, done, None
+            info=1
+        return next_state, reward, done, info
+
+    def render_mode(self):
+        settings = self.world.get_settings()
+        settings.no_rendering_mode = False
+        settings.synchronous_mode = True
+        settings.fixed_delta_seconds = 0.05
+        self.world.apply_settings(settings)
 
     def __del__(self):
         print('\ndisabling synchronous mode.')
         settings = self.world.get_settings()
+        settings.no_rendering_mode=True
         settings.synchronous_mode = False
         self.world.apply_settings(settings)

@@ -1,8 +1,6 @@
 import carla
 import misc
 import controller
-import schedule
-import time
 import math
 import random
 import numpy as np
@@ -26,6 +24,8 @@ args_longitudinal_dict = {
 TARGET_SPEED = 20
 BIAS = 3.15
 MIN_DISTANCE_PERCENTAGE = 0.9
+D_LATERAL_RANGE=5
+DELTA_FI_RANGE=90
 
 
 class RoadOption(Enum):
@@ -46,7 +46,7 @@ class Agent(object):
         self._vehicle = vehicle
         self._world = self._vehicle.get_world()
         self._map = self._vehicle.get_world().get_map()
-        init_location=self._vehicle.get_location()
+        init_location = self._vehicle.get_location()
         self._current_waypoint = self._map.get_waypoint(init_location)
         self._sampling_radius = TARGET_SPEED/3.6
         self._min_distance = self._sampling_radius*MIN_DISTANCE_PERCENTAGE
@@ -64,9 +64,10 @@ class Agent(object):
         self.change_times = 0
         self.target_waypoint = self._current_waypoint
 
-        self._pid_controller = controller.VehiclePIDController(vehicle,
-                                                               args_lateral=args_lateral_dict,
-                                                               args_longitudinal=args_longitudinal_dict)
+        # self._pid_controller = controller.VehiclePIDController(vehicle,
+        #                                                        args_lateral=args_lateral_dict,
+        #                                                        args_longitudinal=args_longitudinal_dict)
+        self._pid_controller = controller.PIDLongitudinalController(vehicle, **args_longitudinal_dict)
         self._pid_timeperiod = pid_time_period
 
         self.x = None
@@ -77,6 +78,7 @@ class Agent(object):
         self.jerk = None
         self.d_lateral = None
         self.volocity = None
+        self.delta_fi = None
 
         self._control = carla.VehicleControl()
         self._control.steer = 0.0
@@ -91,7 +93,7 @@ class Agent(object):
         # fill waypoint trajectory queue
         self._compute_next_waypoints(k=1)
 
-    def run_step(self, simulation_time):
+    def run_step(self):  # 为了得到target_waypoint以及纵向pid自动控制的throttle值
         # not enough waypoints in the horizon? => add more!
         if len(self._waypoints_queue) < int(self._waypoints_queue.maxlen*0.5):
             self._compute_next_waypoints(k=1, lane_change_flag=self.lane_change_flag)
@@ -120,10 +122,8 @@ class Agent(object):
         # target waypoint
         self.target_waypoint, self._target_road_option = self._waypoint_buffer[0]
         # move using PID controllers
-        self._control = self._pid_controller.run_step(TARGET_SPEED+BIAS, self.target_waypoint)
-
-        self._get_current_data(simulation_time)
-        # print(len(self._waypoints_queue))
+        self._control.throttle = self._pid_controller.run_step(TARGET_SPEED+BIAS)
+        self._control.brake=0
 
         # purge the queue of obsolete waypoints
         vehicle_transform = self._vehicle.get_transform()
@@ -137,9 +137,9 @@ class Agent(object):
             for i in range(max_index+1):
                 self._waypoint_buffer.popleft()
 
-        self._vehicle.apply_control(self._control)
+        return self._control  # 这里只控制throttle纵向控制
 
-    def _get_current_data(self, simulation_time):
+    def get_current_data(self, simulation_time):
         transform = self._vehicle.get_transform()
         acceleration = self._vehicle.get_acceleration()
 
@@ -154,6 +154,10 @@ class Agent(object):
         self.jerk = (self.a_lateral-self.a_lateral_past)*self._pid_timeperiod
         self.d_lateral = misc.distance_point_to_line(self.target_waypoint, transform)
         self.volocity = misc.get_speed(self._vehicle)
+
+        self.delta_fi = (self.yaw-self.target_waypoint.transform.rotation.yaw)%360
+        if self.delta_fi > 180:
+            self.delta_fi = self.delta_fi-360
 
         # print('x= %f'%self.x, 'y= %f'%self.y,
         #       'yaw= %f'%self.yaw, 'a_lateral= %f'%self.a_lateral,
@@ -176,6 +180,9 @@ class Agent(object):
                           self._control.steer, self.a_lateral,
                           self.jerk, self.d_lateral,
                           self.x, self.y]]
+
+        return np.array((self.d_lateral/D_LATERAL_RANGE,
+                         self.delta_fi/DELTA_FI_RANGE))
 
     def _compute_next_waypoints(self, k=1, lane_change_flag=RoadOption.LANEFOLLOW):
         """

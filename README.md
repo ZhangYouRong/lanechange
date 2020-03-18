@@ -1,7 +1,7 @@
 # Lanechange 
 BASIC DESCRIPTION: lane-changing tracking method using RL
 
-VERSION: CARLA 0.9.8 WINDOWS
+VERSION: CARLA 0.9.5 WINDOWS
 
 VEHICLE CATAGORY: TESLA MODEL3
 
@@ -15,6 +15,6 @@ VEHICLE CATAGORY: TESLA MODEL3
 
 # How to start:
 
-1.run the server: CarlaUE4.exe
+1.run the server: CarlaUE4.exe -benchmark -FPS=20
 
 2.run: main.py 

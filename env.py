@@ -71,7 +71,9 @@ class Env:
         self.episode_start_time = tick.elapsed_seconds
         self.simulation_time = 0
         self.lane_change_agent = agent.Agent(self.vehicle, self.PIDCONTROLLER_TIME_PERIOD)
-        next_state = self.lane_change_agent.get_current_data(self.simulation_time)
+
+        while self.simulation_time < 3.5:
+            next_state, _, _, _ = self.step([0])  # 去除一开始没加速的S,A,R,S'数据
         return next_state
 
     def step(self, action):
@@ -85,20 +87,23 @@ class Env:
 
         next_state = self.lane_change_agent.get_current_data(self.simulation_time)
 
-        if self.lane_change_agent.change_times == 0 and self.simulation_time > 7:
-            self.lane_change_agent.lane_change_flag = agent.RoadOption.CHANGELANELEFT
+        # if self.lane_change_agent.change_times == 0 and self.simulation_time > 7:
+        #     self.lane_change_agent.lane_change_flag = agent.RoadOption.CHANGELANELEFT
 
         data = np.array(self.lane_change_agent.data).transpose()
         reward = -(0.2*(data[3][-1]/(0.3*9.8))**2*self.PIDCONTROLLER_TIME_PERIOD \
                    +0.8*(data[5][-1]/3.5)**2*self.PIDCONTROLLER_TIME_PERIOD)
-        if data[1][-1]<3:
-            reward-=1*self.PIDCONTROLLER_TIME_PERIOD
+
         # print('K:%f'%K, 'L:%f'%L,
         #       'Time spend:%f'%lane_change_agent.lane_change_duration, 'J:%f'%J)
-        done = 0
+        fail = 0
+        info = 0
+        if data[1][-1] < 5 or abs(next_state[-1])>70 or abs(data[5][-1])>4:
+            fail = 1  # 撞击使速度<5,或直接掉头,或越出道路
+            reward-=200
         if self.lane_change_agent.lane_change_duration is not None:  # 换道结束
-            info=1
-        return next_state, reward, done, info
+            info = 1
+        return next_state, reward, fail, info
 
     def render_mode(self):
         settings = self.world.get_settings()
@@ -110,6 +115,6 @@ class Env:
     def __del__(self):
         print('\ndisabling synchronous mode.')
         settings = self.world.get_settings()
-        settings.no_rendering_mode=True
+        settings.no_rendering_mode = True
         settings.synchronous_mode = False
         self.world.apply_settings(settings)

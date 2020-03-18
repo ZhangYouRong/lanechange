@@ -27,10 +27,10 @@ import controller
 import numpy as np
 import matplotlib.pyplot as plt
 
-TOWN = 'Town03'
+TOWN = 'Town04'
 VEHICLE_TYPE = 'vehicle.tesla.model3'
 VEHICLE_COLOR_RGB = '255,255,255'
-VEHICLE_START_LOCATION = {'x':42, 'y': 7.2, 'z': 0}  # 我是通过manual_control.py手动测的坐标
+VEHICLE_START_LOCATION = {'x':-9.7, 'y': -182, 'z': 0}  # 我是通过manual_control.py手动测的坐标
 PIDCONTROLLER_TIME_PERIOD = 0.05  # 0.05s
 
 
@@ -80,6 +80,13 @@ if __name__ == '__main__':
     client = carla.Client('localhost', 2000)
     client.set_timeout(10)
     world = client.load_world(TOWN)
+    spectator=world.get_spectator()
+    spectator_location=carla.Location(x=VEHICLE_START_LOCATION['x'],
+                                      y=VEHICLE_START_LOCATION['y'],
+                                      z=VEHICLE_START_LOCATION['z']+7)
+    spectator_rotation=carla.Rotation(yaw=90)
+    spectator.set_transform(carla.Transform(spectator_location, spectator_rotation))
+
     # disable all graphic rendering
     print('\nenabling synchronous & no rendering mode.')
     settings = world.get_settings()

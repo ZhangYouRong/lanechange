@@ -1,10 +1,14 @@
-# C:\Program Files\Carla 0.9.8\CarlaUE4.exe
+# cd C:\Program Files\Carla
+# CarlaUE4.exe -benchmark -FPS=20
+# tensorboard --logdir=D:\software\CARLA_0.9.5\workspace\lanechange95\
+# http://localhost:6006
+
 import glob
 import os
 import sys
 
 try:
-    sys.path.append(glob.glob('C:\Program Files\Carla 0.9.8\PythonAPI\carla\dist\carla-*%d.%d-%s.egg'%(
+    sys.path.append(glob.glob('D:\software\CARLA_0.9.5\PythonAPI\carla\dist\carla-*%d.%d-%s.egg'%(
         sys.version_info.major,
         sys.version_info.minor,
         'win-amd64' if os.name == 'nt' else 'linux-x86_64'))[0])
@@ -94,23 +98,23 @@ if __name__ == '__main__':
                                                      y=VEHICLE_START_LOCATION['y'],
                                                      z=VEHICLE_START_LOCATION['z']))
     spawn_point = carla.Transform(start_waypoint.transform.location, start_waypoint.transform.rotation)
-    spawn_point.location.z+=0.015
+
     # episode circulation
     vehicle = world.spawn_actor(bp, spawn_point)
     actor_list.append(vehicle)
     print('created %s'%vehicle.type_id)
 
     world.tick()
-    world_snapshot = world.get_snapshot()
-    start_world_time = world_snapshot.timestamp.elapsed_seconds
+    world_snapshot = world.wait_for_tick()
+    start_world_time = world_snapshot.elapsed_seconds
     simulation_time = 0
     lane_change_agent = Agent(vehicle, PIDCONTROLLER_TIME_PERIOD)
     lane_change_agent.run_step(simulation_time)
 
     while simulation_time < 25:  # 25s后跳出循环
         world.tick()  # Initialize a new "tick" in the simulator.
-        world_snapshot = world.get_snapshot()  # Wait until we listen to the new tick.
-        simulation_time = world_snapshot.timestamp.elapsed_seconds-start_world_time
+        world_snapshot = world.wait_for_tick() # Wait until we listen to the new tick.
+        simulation_time = world_snapshot.elapsed_seconds-start_world_time
         lane_change_agent.run_step(simulation_time)
         # apply control and get data
 

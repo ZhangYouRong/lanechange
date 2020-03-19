@@ -16,10 +16,10 @@ import numpy as np
 
 
 class Env:
-    TOWN = 'Town03'
+    TOWN = 'Town04'
     VEHICLE_TYPE = 'vehicle.tesla.model3'
     VEHICLE_COLOR_RGB = '255,255,255'
-    VEHICLE_START_LOCATION = {'x': 46, 'y': 7.2, 'z': 0}  # 我是通过manual_control.py手动测的坐标
+    VEHICLE_START_LOCATION = {'x': -9.7, 'y': -182, 'z': 0}  # 我是通过manual_control.py手动测的坐标
     PIDCONTROLLER_TIME_PERIOD = 0.05  # 0.05s
 
     observation_space_dim = 2  # 横向误差和航向误差
@@ -32,6 +32,13 @@ class Env:
         client = carla.Client('localhost', 2000)
         client.set_timeout(10)
         self.world = client.load_world(self.TOWN)
+
+        spectator = self.world.get_spectator()
+        spectator_location = carla.Location(x=self.VEHICLE_START_LOCATION['x'],
+                                            y=self.VEHICLE_START_LOCATION['y'],
+                                            z=self.VEHICLE_START_LOCATION['z']+7)
+        spectator_rotation = carla.Rotation(yaw=90)
+        spectator.set_transform(carla.Transform(spectator_location, spectator_rotation))
         # disable all graphic rendering
         print('\nenabling synchronous & no rendering mode.')
         settings = self.world.get_settings()
@@ -50,7 +57,7 @@ class Env:
                                                               z=self.VEHICLE_START_LOCATION['z']))
         self.spawn_point = carla.Transform(start_waypoint.transform.location,
                                            start_waypoint.transform.rotation)
-        self.spawn_point.location.z += 0.015  # without this may lead to collision error for spawn operation
+        # self.spawn_point.location.z += 0.015  # without this may lead to collision error for spawn operation
         self.actor_list = []
         self.lane_change_agent = None
         self.reset()
@@ -71,9 +78,9 @@ class Env:
         self.episode_start_time = tick.elapsed_seconds
         self.simulation_time = 0
         self.lane_change_agent = agent.Agent(self.vehicle, self.PIDCONTROLLER_TIME_PERIOD)
-
-        while self.simulation_time < 3.5:
-            next_state, _, _, _ = self.step([0])  # 去除一开始没加速的S,A,R,S'数据
+        next_state, _, _, _ = self.step([0])
+        # while self.simulation_time < 3.5:
+        #     next_state, _, _, _ = self.step([0])  # 去除一开始没加速的S,A,R,S'数据
         return next_state
 
     def step(self, action):
@@ -98,9 +105,9 @@ class Env:
         #       'Time spend:%f'%lane_change_agent.lane_change_duration, 'J:%f'%J)
         fail = 0
         info = 0
-        if data[1][-1] < 5 or abs(next_state[-1])>70 or abs(data[5][-1])>4:
+        if abs(next_state[-1]) > 70 or abs(data[5][-1]) > 4.5:
             fail = 1  # 撞击使速度<5,或直接掉头,或越出道路
-            reward-=200
+            reward -= 200
         if self.lane_change_agent.lane_change_duration is not None:  # 换道结束
             info = 1
         return next_state, reward, fail, info

@@ -211,6 +211,6 @@ class PIDLateralController():
 
         self._last_steer = self._steer
         self._steer = STEER_FILTER*self._K*(d_lateral-self._Lookahead_Distance*delta_fi)+(
-                    1-STEER_FILTER)*self._last_steer
+                1-STEER_FILTER)*self._last_steer
 
         return np.clip(self._steer, -1.0, 1.0)

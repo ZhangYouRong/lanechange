@@ -18,12 +18,6 @@ from torch.distributions import Normal
 from torch.utils.tensorboard import SummaryWriter
 import time
 
-'''
-Implementation of Deep Deterministic Policy Gradients (DDPG) with pytorch 
-riginal paper: https://arxiv.org/abs/1509.02971
-Not the author's implementation !
-'''
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--mode', default='train', type=str)  # mode = 'train' or 'test'
 # Note that DDPG is feasible about hyper-parameters.

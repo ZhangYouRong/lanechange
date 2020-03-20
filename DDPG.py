@@ -25,7 +25,7 @@ Not the author's implementation !
 '''
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--mode', default='test', type=str)  # mode = 'train' or 'test'
+parser.add_argument('--mode', default='train', type=str)  # mode = 'train' or 'test'
 # Note that DDPG is feasible about hyper-parameters.
 # You should fine-tuning if you change to another environment.
 parser.add_argument("--env_name", default="Carla_0.9.5")
@@ -33,10 +33,10 @@ parser.add_argument('--tau', default=0.005, type=float)  # target smoothing coef
 parser.add_argument('--a_learning_rate', default=1e-4, type=float)
 parser.add_argument('--c_learning_rate', default=1e-3, type=float)
 parser.add_argument('--gamma', default=0.95, type=int)  # discounted factor
-parser.add_argument('--capacity', default=100000, type=int)  # replay buffer size
+parser.add_argument('--capacity', default=50000, type=int)  # replay buffer size
 parser.add_argument('--batch_size', default=64, type=int)  # mini batch size
 parser.add_argument('--exploration_noise', default=0.7, type=float)
-parser.add_argument('--max_episode', default=15000, type=int)  # num of games
+parser.add_argument('--max_episode', default=20000, type=int)  # num of games
 parser.add_argument('--max_length_of_time', default=30, type=int)  # num of games
 parser.add_argument('--print_log', default=20, type=int)  # num of steps to print log
 parser.add_argument('--update_iteration', default=10, type=int)  # every step replay 10 batches for update
@@ -65,7 +65,7 @@ action_dim = env.action_dim
 max_action = float(env.max_action)
 min_Val = torch.tensor(1e-7).float().to(device)  # min value
 
-directory = './exp2020-03-19-17-25-51./'
+directory = './exp2020-03-19-22-38-43./'
 if args.mode == 'train':
     directory = './exp'+time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))+'./'
 
@@ -275,7 +275,7 @@ def main():
                                 print(
                                     "Ep_i \t{}, the ep_r is \t{:0.2f}, the step is \t{},finish \t{}".format(i, ep_r, t,
                                                                                                             info))
-                                args.exploration_noise*=0.999
+                                args.exploration_noise*=0.995
                             ep_r = 0
                             break
 

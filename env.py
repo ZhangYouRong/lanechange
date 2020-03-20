@@ -19,7 +19,7 @@ class Env:
     TOWN = 'Town04'
     VEHICLE_TYPE = 'vehicle.tesla.model3'
     VEHICLE_COLOR_RGB = '255,255,255'
-    VEHICLE_START_LOCATION = {'x': -9.7, 'y': -182, 'z': 0}  # 我是通过manual_control.py手动测的坐标
+    VEHICLE_START_LOCATION = {'x': -9.8, 'y': -186.6, 'z': 0}  # 我是通过manual_control.py手动测的坐标
     PIDCONTROLLER_TIME_PERIOD = 0.05  # 0.05s
 
     observation_space_dim = 2  # 横向误差和航向误差
@@ -78,9 +78,9 @@ class Env:
         self.episode_start_time = tick.elapsed_seconds
         self.simulation_time = 0
         self.lane_change_agent = agent.Agent(self.vehicle, self.PIDCONTROLLER_TIME_PERIOD)
-        next_state, _, _, _ = self.step([0])
-        # while self.simulation_time < 3.5:
-        #     next_state, _, _, _ = self.step([0])  # 去除一开始没加速的S,A,R,S'数据
+        while self.simulation_time < 3:
+            next_state, _, _, _ = self.step([0])  # 去除一开始没加速的S,A,R,S'数据
+        # next_state, _, _, _ = self.step([0])  # 去除一开始没加速的S,A,R,S'数据
         return next_state
 
     def step(self, action):

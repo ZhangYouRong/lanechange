@@ -1,6 +1,6 @@
 # cd C:\Program Files\Carla
 # CarlaUE4.exe -benchmark -FPS=20
-# tensorboard --logdir=D:\software\CARLA_0.9.5\workspace\lanechange\
+# tensorboard --logdir=D:\software\CARLA_0.9.5\workspace\lanechange
 # http://localhost:6006
 
 import argparse

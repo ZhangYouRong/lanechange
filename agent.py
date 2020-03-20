@@ -1,7 +1,6 @@
 import carla
 import misc
 import controller
-import schedule
 import time
 import math
 import random

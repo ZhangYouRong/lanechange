@@ -38,7 +38,7 @@ parser.add_argument('--batch_size', default=64, type=int)  # mini batch size
 parser.add_argument('--exploration_noise', default=0.7, type=float)
 parser.add_argument('--max_episode', default=20000, type=int)  # num of games
 parser.add_argument('--max_length_of_time', default=30, type=int)  # num of games
-parser.add_argument('--print_log', default=20, type=int)  # num of steps to print log
+parser.add_argument('--print_log', default=10, type=int)  # num of steps to print log
 parser.add_argument('--update_iteration', default=10, type=int)  # every step replay 10 batches for update
 
 # parser.add_argument('--target_update_interval', default=1, type=int)
@@ -314,8 +314,8 @@ def main():
 
     elif args.mode == 'nn':
         ddpg_agent.load()
-        state = np.array((5/5,
-                          -90/90))
+        state = np.array((0.6/4.5,
+                          -90/70))
         action = ddpg_agent.select_action(state)
         s = torch.FloatTensor(state.reshape(1, -1)).to(device)
         a = torch.FloatTensor(action.reshape(1, -1)).to(device)

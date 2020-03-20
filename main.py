@@ -30,7 +30,7 @@ import matplotlib.pyplot as plt
 TOWN = 'Town04'
 VEHICLE_TYPE = 'vehicle.tesla.model3'
 VEHICLE_COLOR_RGB = '255,255,255'
-VEHICLE_START_LOCATION = {'x':-9.7, 'y': -182, 'z': 0}  # 我是通过manual_control.py手动测的坐标
+VEHICLE_START_LOCATION = {'x': -9.8, 'y': -186.6, 'z': 0}  # 我是通过manual_control.py手动测的坐标
 PIDCONTROLLER_TIME_PERIOD = 0.05  # 0.05s
 
 
@@ -80,11 +80,11 @@ if __name__ == '__main__':
     client = carla.Client('localhost', 2000)
     client.set_timeout(10)
     world = client.load_world(TOWN)
-    spectator=world.get_spectator()
-    spectator_location=carla.Location(x=VEHICLE_START_LOCATION['x'],
-                                      y=VEHICLE_START_LOCATION['y'],
-                                      z=VEHICLE_START_LOCATION['z']+7)
-    spectator_rotation=carla.Rotation(yaw=90)
+    spectator = world.get_spectator()
+    spectator_location = carla.Location(x=VEHICLE_START_LOCATION['x'],
+                                        y=VEHICLE_START_LOCATION['y'],
+                                        z=VEHICLE_START_LOCATION['z']+7)
+    spectator_rotation = carla.Rotation(yaw=90)
     spectator.set_transform(carla.Transform(spectator_location, spectator_rotation))
 
     # disable all graphic rendering
@@ -117,20 +117,18 @@ if __name__ == '__main__':
     simulation_time = 0
     lane_change_agent = Agent(vehicle, PIDCONTROLLER_TIME_PERIOD)
     lane_change_agent.run_step(simulation_time)
+    finish = False
 
-    while simulation_time < 25:  # 25s后跳出循环
+    while not finish:  # 完成后跳出循环
         world.tick()  # Initialize a new "tick" in the simulator.
-        world_snapshot = world.wait_for_tick() # Wait until we listen to the new tick.
+        world_snapshot = world.wait_for_tick()  # Wait until we listen to the new tick.
         simulation_time = world_snapshot.elapsed_seconds-start_world_time
-        lane_change_agent.run_step(simulation_time)
+        finish = lane_change_agent.run_step(simulation_time)
         # apply control and get data
-
-        if lane_change_agent.change_times == 0 and simulation_time > 7:
-            lane_change_agent.lane_change_flag = RoadOption.CHANGELANELEFT
 
     data = np.array(lane_change_agent.data).transpose()
     J = 0.2*sum((data[3]/(0.3*9.8))**2*PIDCONTROLLER_TIME_PERIOD) \
-                +0.8*sum((data[5]/(3.5))**2*PIDCONTROLLER_TIME_PERIOD)
+        +0.8*sum((data[5]/(3.5))**2*PIDCONTROLLER_TIME_PERIOD)
     print('Time spend on lane change:%f'%lane_change_agent.lane_change_duration)
     print('J:%f'%J)
     plot_data(data)

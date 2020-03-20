@@ -275,7 +275,7 @@ def main():
                                 print(
                                     "Ep_i \t{}, the ep_r is \t{:0.2f}, the step is \t{},finish \t{}".format(i, ep_r, t,
                                                                                                             info))
-                                args.exploration_noise*=0.995
+                                args.exploration_noise *= 0.995
                             ep_r = 0
                             break
 
@@ -319,12 +319,12 @@ def main():
         action = ddpg_agent.select_action(state)
         s = torch.FloatTensor(state.reshape(1, -1)).to(device)
         a = torch.FloatTensor(action.reshape(1, -1)).to(device)
-        Value=ddpg_agent.critic(s, a)
+        Value = ddpg_agent.critic(s, a)
         print('actor_l1out', ddpg_agent.actor.l1out)
         print('actor_l2out', ddpg_agent.actor.l2out)
         print('critic_l1out', ddpg_agent.critic.l1out)
         print('critic_l2out', ddpg_agent.critic.l2out)
-        print('action:',action,'value:',Value)
+        print('action:', action, 'value:', Value)
 
 
     else:

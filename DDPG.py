@@ -19,7 +19,7 @@ from torch.utils.tensorboard import SummaryWriter
 import time
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--mode', default='train', type=str)  # mode = 'train' or 'test'
+parser.add_argument('--mode', default='show', type=str)  # mode = 'train' or 'test'
 # Note that DDPG is feasible about hyper-parameters.
 # You should fine-tuning if you change to another environment.
 parser.add_argument("--env_name", default="Carla_0.9.5")
@@ -30,9 +30,9 @@ parser.add_argument('--gamma', default=0.95, type=int)  # discounted factor
 parser.add_argument('--capacity', default=50000, type=int)  # replay buffer size
 parser.add_argument('--batch_size', default=64, type=int)  # mini batch size
 parser.add_argument('--exploration_noise', default=0.7, type=float)
-parser.add_argument('--max_episode', default=20000, type=int)  # num of games
-parser.add_argument('--max_length_of_time', default=30, type=int)  # num of games
-parser.add_argument('--print_log', default=10, type=int)  # num of steps to print log
+parser.add_argument('--max_episode', default=30000, type=int)  # num of games
+parser.add_argument('--max_length_of_time', default=40, type=int)  # num of games
+parser.add_argument('--print_log', default=15, type=int)  # num of steps to print log
 parser.add_argument('--update_iteration', default=10, type=int)  # every step replay 10 batches for update
 
 # parser.add_argument('--target_update_interval', default=1, type=int)
@@ -59,7 +59,7 @@ action_dim = env.action_dim
 max_action = float(env.max_action)
 min_Val = torch.tensor(1e-7).float().to(device)  # min value
 
-directory = './exp2020-03-19-22-38-43./'
+directory = './exp2020-03-22-18-29-59./'
 if args.mode == 'train':
     directory = './exp'+time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))+'./'
 
@@ -232,8 +232,9 @@ def main():
                 action = ddpg_agent.select_action(state)
                 next_state, reward, done, info = env.step(np.array(action, dtype=float))
                 ep_r += reward
-                # env.render()
-                if env.simulation_time > args.max_length_of_time:  # 一个episode结束
+
+                # 超过最大时间或者完成轨迹追踪，一个episode结束
+                if env.simulation_time > args.max_length_of_time or info:
                     print(
                         "Ep_i \t{}, the ep_r is \t{:0.2f}, the step is \t{},done \t{}".format(i, ep_r, t, done))
                     ep_r = 0
@@ -263,7 +264,9 @@ def main():
                         ddpg_agent.replay_buffer.push((state, next_state, action, reward, np.float(fail)))
 
                         state = next_state
-                        if env.simulation_time > args.max_length_of_time or fail:  # 一个episode结束
+
+                        # 超过最大时间或者完成轨迹追踪，一个episode结束
+                        if env.simulation_time > args.max_length_of_time or fail or info:  # 一个episode结束
                             ddpg_agent.writer.add_scalar('ep_r', ep_r, global_step=i)
                             if i%args.print_log == 0:
                                 print(
@@ -275,7 +278,7 @@ def main():
 
                     except RuntimeError:
                         print("trying to reconnect")
-                        time.sleep(3.0)
+                        time.sleep(2.0)
             except RuntimeError:
                 print("trying to reconnect")
                 time.sleep(3.0)
@@ -295,9 +298,9 @@ def main():
             next_state, reward, done, info = env.step(np.array(action, dtype=float))
             ep_r += reward
             # env.render()
-            if env.simulation_time > args.max_length_of_time:  # 一个episode结束
+            if env.simulation_time > args.max_length_of_time or info:  # 一个episode结束
                 print(
-                    "the ep_r is \t{:0.2f}, the step is \t{},done \t{}".format(ep_r, t, done))
+                    "the ep_r is \t{:0.2f}, the step is \t{},done \t{}".format(ep_r, t, info))
                 ep_r = 0
                 break
             state = next_state

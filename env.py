@@ -78,13 +78,13 @@ class Env:
         self.episode_start_time = tick.elapsed_seconds
         self.simulation_time = 0
         self.lane_change_agent = agent.Agent(self.vehicle, self.PIDCONTROLLER_TIME_PERIOD)
-        while self.simulation_time < 3:
+        while self.simulation_time < 2.5:
             next_state, _, _, _ = self.step([0])  # 去除一开始没加速的S,A,R,S'数据
         # next_state, _, _, _ = self.step([0])  # 去除一开始没加速的S,A,R,S'数据
         return next_state
 
     def step(self, action):
-        control = self.lane_change_agent.run_step()
+        control, finish = self.lane_change_agent.run_step()
         control.steer = action[0]
         self.vehicle.apply_control(control)
 
@@ -104,13 +104,14 @@ class Env:
         # print('K:%f'%K, 'L:%f'%L,
         #       'Time spend:%f'%lane_change_agent.lane_change_duration, 'J:%f'%J)
         fail = 0
-        info = 0
+
         if abs(next_state[-1]) > 70 or abs(data[5][-1]) > 4.5:
             fail = 1  # 撞击使速度<5,或直接掉头,或越出道路
             reward -= 200
-        if self.lane_change_agent.lane_change_duration is not None:  # 换道结束
-            info = 1
-        return next_state, reward, fail, info
+        # info = 0
+        # if self.lane_change_agent.lane_change_duration is not None:  # 换道结束
+        #     info = 1
+        return next_state, reward, fail, finish
 
     def render_mode(self):
         settings = self.world.get_settings()

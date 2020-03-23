@@ -19,7 +19,7 @@ from torch.utils.tensorboard import SummaryWriter
 import time
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--mode', default='show', type=str)  # mode = 'train' or 'test'
+parser.add_argument('--mode', default='train', type=str)  # mode = 'train' or 'test'
 # Note that DDPG is feasible about hyper-parameters.
 # You should fine-tuning if you change to another environment.
 parser.add_argument("--env_name", default="Carla_0.9.5")

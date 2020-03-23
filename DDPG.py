@@ -30,7 +30,7 @@ parser.add_argument('--gamma', default=0.95, type=int)  # discounted factor
 parser.add_argument('--capacity', default=50000, type=int)  # replay buffer size
 parser.add_argument('--batch_size', default=64, type=int)  # mini batch size
 parser.add_argument('--exploration_noise', default=0.7, type=float)
-parser.add_argument('--max_episode', default=30000, type=int)  # num of games
+parser.add_argument('--max_episode', default=20000, type=int)  # num of games
 parser.add_argument('--max_length_of_time', default=40, type=int)  # num of games
 parser.add_argument('--print_log', default=10, type=int)  # num of steps to print log
 parser.add_argument('--update_iteration', default=10, type=int)  # every step replay 10 batches for update

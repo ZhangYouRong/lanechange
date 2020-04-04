@@ -10,6 +10,7 @@ import os, sys, random
 import numpy as np
 
 from env import Env
+import agent
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -17,6 +18,7 @@ import torch.optim as optim
 from torch.distributions import Normal
 from torch.utils.tensorboard import SummaryWriter
 import time
+import noise
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--mode', default='train', type=str)  # mode = 'train' or 'test'
@@ -24,15 +26,15 @@ parser.add_argument('--mode', default='train', type=str)  # mode = 'train' or 't
 # You should fine-tuning if you change to another environment.
 parser.add_argument("--env_name", default="Carla_0.9.5")
 parser.add_argument('--tau', default=0.005, type=float)  # target smoothing coefficient
-parser.add_argument('--a_learning_rate', default=1e-4, type=float)
-parser.add_argument('--c_learning_rate', default=1e-3, type=float)
+parser.add_argument('--a_learning_rate', default=5*1e-6, type=float)
+parser.add_argument('--c_learning_rate', default=5*1e-4, type=float)
 parser.add_argument('--gamma', default=0.95, type=int)  # discounted factor
 parser.add_argument('--capacity', default=50000, type=int)  # replay buffer size
 parser.add_argument('--batch_size', default=64, type=int)  # mini batch size
 parser.add_argument('--exploration_noise', default=0.7, type=float)
 parser.add_argument('--max_episode', default=20000, type=int)  # num of games
 parser.add_argument('--max_length_of_time', default=40, type=int)  # num of games
-parser.add_argument('--print_log', default=15, type=int)  # num of steps to print log
+parser.add_argument('--print_log', default=10, type=int)  # num of steps to print log
 parser.add_argument('--update_iteration', default=10, type=int)  # every step replay 10 batches for update
 
 # parser.add_argument('--target_update_interval', default=1, type=int)
@@ -59,7 +61,7 @@ action_dim = env.action_dim
 max_action = float(env.max_action)
 min_Val = torch.tensor(1e-7).float().to(device)  # min value
 
-directory = './exp2020-03-22-18-29-59./'
+directory = './exp2020-04-01-22-42-11./'
 if args.mode == 'train':
     directory = './exp'+time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))+'./'
 
@@ -103,8 +105,8 @@ class Actor(nn.Module):
         super(Actor, self).__init__()
 
         self.l1 = nn.Linear(state_dim, 20)
-        self.l2 = nn.Linear(20, 10)
-        self.l3 = nn.Linear(10, action_dim)
+        self.l2 = nn.Linear(20, 12)
+        self.l3 = nn.Linear(12, action_dim)
         self.l1out = 0
         self.l2out = 0
 
@@ -123,8 +125,8 @@ class Critic(nn.Module):
     def __init__(self, state_dim, action_dim):
         super(Critic, self).__init__()
 
-        self.l1 = nn.Linear(state_dim+action_dim, 40)
-        self.l2 = nn.Linear(40, 30)
+        self.l1 = nn.Linear(state_dim+action_dim, 45)
+        self.l2 = nn.Linear(45, 30)
         self.l3 = nn.Linear(30, 1)
 
         self.l1out = 0
@@ -224,6 +226,10 @@ class DDPG(object):
 def main():
     ddpg_agent = DDPG(state_dim, action_dim, max_action)
     ep_r = 0
+    decay = 1
+    # n_noise = noise.OrnsteinUhlenbeckActionNoise(mu=0, sigma=0.7, theta=0.3, dt=0.05)
+    n_noise = noise.NormalActionNoise(mu=0, sigma=0.7)
+
     if args.mode == 'test':
         ddpg_agent.load()
         for i in range(args.test_iteration):
@@ -255,13 +261,19 @@ def main():
                     try:
                         action = ddpg_agent.select_action(state)
 
-                        # issue 3 add noise to action
-                        action = (action+np.random.normal(0, args.exploration_noise, size=env.action_dim)).clip(
-                            env.action_space_low, env.action_space_high)
+                        N = n_noise()
+                        N *= decay
 
-                        next_state, reward, fail, info = env.step(action)
+                        action = (action+np.array(N)).clip(
+                            env.action_space_low, env.action_space_high)
+                        # issue 3 add noise to action
+                        # action = (action+np.random.normal(0, args.exploration_noise, size=env.action_dim)).clip(
+                        #     env.action_space_low, env.action_space_high)
+
+                        next_state, reward, fail, info = env.step(np.array(action, dtype=float))
                         ep_r += reward
-                        ddpg_agent.replay_buffer.push((state, next_state, action, reward, np.float(fail)))
+                        if abs(state[0]-next_state[0])*agent.D_LATERAL_RANGE < 2.5:  # 去除d_lateral突变点
+                            ddpg_agent.replay_buffer.push((state, next_state, action, reward, np.float(fail)))
 
                         state = next_state
 
@@ -270,9 +282,13 @@ def main():
                             ddpg_agent.writer.add_scalar('ep_r', ep_r, global_step=i)
                             if i%args.print_log == 0:
                                 print(
-                                    "Ep_i \t{}, the ep_r is \t{:0.2f}, the step is \t{},finish \t{}".format(i, ep_r, t,
-                                                                                                            info))
-                                args.exploration_noise *= 0.995
+                                    "Ep_i \t{}, the ep_r is \t{:0.2f}, the step is \t{},finish \t{}".format(
+                                        i, ep_r, t, info))
+                                ddpg_agent.writer.add_scalar('N', N, global_step=i)
+
+
+                                decay *= 0.98
+                                # args.exploration_noise *= 0.995
                             ep_r = 0
                             break
 
@@ -308,20 +324,6 @@ def main():
             while time.time()-last_time < 0.05:
                 pass
             last_time = time.time()
-
-    elif args.mode == 'nn':
-        ddpg_agent.load()
-        state = np.array((0.6/4.5,
-                          -90/70))
-        action = ddpg_agent.select_action(state)
-        s = torch.FloatTensor(state.reshape(1, -1)).to(device)
-        a = torch.FloatTensor(action.reshape(1, -1)).to(device)
-        Value = ddpg_agent.critic(s, a)
-        print('actor_l1out', ddpg_agent.actor.l1out)
-        print('actor_l2out', ddpg_agent.actor.l2out)
-        print('critic_l1out', ddpg_agent.critic.l1out)
-        print('critic_l2out', ddpg_agent.critic.l2out)
-        print('action:', action, 'value:', Value)
 
 
     else:

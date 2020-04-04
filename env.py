@@ -105,9 +105,10 @@ class Env:
         #       'Time spend:%f'%lane_change_agent.lane_change_duration, 'J:%f'%J)
         fail = 0
 
-        if abs(next_state[-1]) > 70 or abs(data[5][-1]) > 4.5:
+        if abs(next_state[-1])*agent.DELTA_FI_RANGE > 70 or \
+                abs(next_state[0]*agent.D_LATERAL_RANGE) > 4.5:
             fail = 1  # 撞击使速度<5,或直接掉头,或越出道路
-            reward -= 200
+            reward -= 1
         # info = 0
         # if self.lane_change_agent.lane_change_duration is not None:  # 换道结束
         #     info = 1

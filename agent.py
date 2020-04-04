@@ -58,7 +58,9 @@ class Agent(object):
         # compute initial waypoints
         self._waypoints_queue.append((self._current_waypoint.next(self._waypoint_resolution)[0], RoadOption.LANEFOLLOW))
         self._target_road_option = None
-        self.lane_change_flag = random.choice([RoadOption.CHANGELANELEFT,RoadOption.CHANGELANERIGHT])
+        # self.lane_change_flag = random.choice([RoadOption.CHANGELANELEFT,RoadOption.CHANGELANERIGHT])
+        # self.lane_change_flag = RoadOption.CHANGELANELEFT
+        self.lane_change_flag = RoadOption.LANEFOLLOW
         self.lane_change_start = None
         self.lane_change_duration = None
 
@@ -97,14 +99,14 @@ class Agent(object):
     def run_step(self):  # 为了得到target_waypoint以及纵向pid自动控制的throttle值
         finish = False
         if len(self._waypoints_queue) == 0:
-            self._control.steer = 0.0
-            self._control.throttle = 0.0
-            self._control.brake = 1.0
-            self._control.hand_brake = False
-            self._control.manual_gear_shift = False
-            self._vehicle.apply_control(self._control)
+            # self._control.steer = 0.0
+            # self._control.throttle = 0.0
+            # self._control.brake = 1.0
+            # self._control.hand_brake = False
+            # self._control.manual_gear_shift = False
+            # self._vehicle.apply_control(self._control)
             finish = True
-            return self._control, finish
+            # return self._control, finish
 
         self._update_buffer()
 

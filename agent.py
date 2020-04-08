@@ -25,7 +25,7 @@ TARGET_SPEED = 20
 BIAS = 3.15
 MIN_DISTANCE_PERCENTAGE = 0.9
 D_LATERAL_RANGE = 4.5
-DELTA_FI_RANGE = 70
+DELTA_FI_RANGE = 60
 
 
 class RoadOption(Enum):
@@ -59,8 +59,8 @@ class Agent(object):
         self._waypoints_queue.append((self._current_waypoint.next(self._waypoint_resolution)[0], RoadOption.LANEFOLLOW))
         self._target_road_option = None
         # self.lane_change_flag = random.choice([RoadOption.CHANGELANELEFT,RoadOption.CHANGELANERIGHT])
-        # self.lane_change_flag = RoadOption.CHANGELANELEFT
-        self.lane_change_flag = RoadOption.LANEFOLLOW
+        self.lane_change_flag = RoadOption.CHANGELANELEFT
+        # self.lane_change_flag = RoadOption.LANEFOLLOW
         self.lane_change_start = None
         self.lane_change_duration = None
 

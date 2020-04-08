@@ -25,9 +25,9 @@ parser.add_argument('--mode', default='train', type=str)  # mode = 'train' or 't
 # Note that DDPG is feasible about hyper-parameters.
 # You should fine-tuning if you change to another environment.
 parser.add_argument("--env_name", default="Carla_0.9.5")
-parser.add_argument('--tau', default=0.005, type=float)  # target smoothing coefficient
-parser.add_argument('--a_learning_rate', default=5*1e-6, type=float)
-parser.add_argument('--c_learning_rate', default=5*1e-4, type=float)
+parser.add_argument('--tau', default=0.005, type=float)  # target smoothing coefficientm
+parser.add_argument('--a_learning_rate', default=8*1e-5, type=float)
+parser.add_argument('--c_learning_rate', default=8.5*1e-5, type=float)
 parser.add_argument('--gamma', default=0.95, type=int)  # discounted factor
 parser.add_argument('--capacity', default=50000, type=int)  # replay buffer size
 parser.add_argument('--batch_size', default=64, type=int)  # mini batch size
@@ -61,10 +61,9 @@ action_dim = env.action_dim
 max_action = float(env.max_action)
 min_Val = torch.tensor(1e-7).float().to(device)  # min value
 
-directory = './exp2020-04-01-22-42-11./'
+directory = './exp2020-04-04-10-30-15./'
 if args.mode == 'train':
     directory = './exp'+time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))+'./'
-
 
 class Replay_buffer():
     '''
@@ -103,20 +102,15 @@ class Replay_buffer():
 class Actor(nn.Module):
     def __init__(self, state_dim, action_dim, max_action):
         super(Actor, self).__init__()
-
         self.l1 = nn.Linear(state_dim, 20)
         self.l2 = nn.Linear(20, 12)
         self.l3 = nn.Linear(12, action_dim)
-        self.l1out = 0
-        self.l2out = 0
 
         self.max_action = max_action
 
     def forward(self, x):
         x = F.relu(self.l1(x))
-        self.l1out = x
         x = F.relu(self.l2(x))
-        self.l2out = x
         x = self.max_action*torch.tanh(self.l3(x))
         return x
 
@@ -129,14 +123,10 @@ class Critic(nn.Module):
         self.l2 = nn.Linear(45, 30)
         self.l3 = nn.Linear(30, 1)
 
-        self.l1out = 0
-        self.l2out = 0
 
     def forward(self, x, u):
         x = F.relu(self.l1(torch.cat([x, u], 1)))
-        self.l1out = x
         x = F.relu(self.l2(x))
-        self.l2out = x
         x = self.l3(x)
         return x
 

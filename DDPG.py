@@ -61,7 +61,7 @@ action_dim = env.action_dim
 max_action = float(env.max_action)
 min_Val = torch.tensor(1e-7).float().to(device)  # min value
 
-directory = './exp2020-04-04-10-30-15./'
+directory = './exp2020-04-04-10-30-14./'
 if args.mode == 'train':
     directory = './exp'+time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))+'./'
 

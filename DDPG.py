@@ -25,7 +25,7 @@ parser.add_argument('--mode', default='train', type=str)  # mode = 'train' or 't
 # Note that DDPG is feasible about hyper-parameters.
 # You should fine-tuning if you change to another environment.
 parser.add_argument("--env_name", default="Carla_0.9.5")
-parser.add_argument('--tau', default=0.005, type=float)  # target smoothing coefficientm
+parser.add_argument('--tau', default=0.005, type=float)  # target smoothing coefficient
 parser.add_argument('--a_learning_rate', default=8*1e-5, type=float)
 parser.add_argument('--c_learning_rate', default=8.5*1e-5, type=float)
 parser.add_argument('--gamma', default=0.95, type=int)  # discounted factor

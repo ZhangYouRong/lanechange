@@ -34,8 +34,11 @@ VEHICLE_TYPE = 'vehicle.tesla.model3'
 VEHICLE_COLOR_RGB = '255,255,255'
 VEHICLE_START_LOCATION = {'x': 46, 'y': 7.2, 'z': 0}  # 我是通过manual_control.py手动测的坐标
 PIDCONTROLLER_TIME_PERIOD = 0.05  # 0.05s
-KLIST = np.linspace(43/540, 53/540, 11)
-LLIST = np.linspace(0.10, 0.14, 9)
+# KLIST = np.linspace(43/540, 53/540, 11)
+# LLIST = np.linspace(0.10, 0.14, 9)
+KLIST = np.linspace(0.01, 0.25, 25)
+LLIST = np.linspace(0.01, 0.20, 20)
+
 # BEST PARAMETER:
 # K=49/540 L=0.115
 # K:0.090741 L:0.115000 Time spend:2.350000 J:0.975387
@@ -107,7 +110,9 @@ if __name__ == '__main__':
     # spawn_point.location.z += 0.015  # without this may lead to collision error for spawn operation
 
     a = np.zeros((len(KLIST), len(LLIST)))
-
+    Kmin=0
+    Lmin=0
+    amin=1
     for i, K in enumerate(KLIST):
         for j, L in enumerate(LLIST):
             agent.args_lateral_dict['K'] = K
@@ -145,12 +150,16 @@ if __name__ == '__main__':
 
             a[i][j] = J
             # plot_data(data)
-
+            if J<amin:
+                amin=J
+                Kmin=K
+                Lmin=L
             # destroy
             del lane_change_agent
             for actor in actor_list:
                 actor.destroy()
 
+    print(Kmin, Lmin, amin)
     print('\ndisabling synchronous mode.')
     settings = world.get_settings()
     settings.synchronous_mode = False

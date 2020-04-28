@@ -62,7 +62,7 @@ action_dim = env.action_dim
 max_action = float(env.max_action)
 min_Val = torch.tensor(1e-7).float().to(device)  # min value
 
-directory = './exp2020-04-27-18-21-16./'
+directory = './exp2020-04-22-10-33-48./'
 if args.mode == 'train':
     directory = './exp'+time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))+'./'
 
@@ -235,7 +235,7 @@ def main():
             state = env.reset()
             for t in count():
                 try:
-                    state[0] += 0.0988/agent.D_LATERAL_RANGE
+                    state[0] += 0.247/agent.D_LATERAL_RANGE
                     action = ddpg_agent.select_action(state)
                     next_state, reward, done, info = env.step(np.array(action, dtype=float))
                     ep_r += reward

@@ -24,9 +24,9 @@ class Env:
 
     observation_space_dim = 2  # 横向误差和航向误差
     action_dim = 1  # steer
-    max_action = 0.1  # max steering angle
-    action_space_low = -0.1
-    action_space_high = 0.1
+    max_action = 1  # max steering angle
+    action_space_low = -1
+    action_space_high = 1
 
     def __init__(self):
         client = carla.Client('localhost', 2000)
@@ -106,7 +106,7 @@ class Env:
         #       'Time spend:%f'%lane_change_agent.lane_change_duration, 'J:%f'%J)
         fail = 0
 
-        if abs(next_state[-1])*agent.DELTA_FI_RANGE > 30:
+        if abs(next_state[-1])*agent.DELTA_FI_RANGE > 60:
             fail = 1  # 撞击使速度<5,或直接掉头,或越出道路
             reward -= 0.5
         if abs(next_state[0]*agent.D_LATERAL_RANGE) > 4.5:

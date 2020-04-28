@@ -2,7 +2,6 @@ import carla
 import misc
 import controller
 import math
-import random
 import numpy as np
 from enum import Enum
 from collections import deque

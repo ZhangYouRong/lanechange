@@ -51,13 +51,17 @@ class Agent(object):
         self._sampling_radius = TARGET_SPEED/3.6
         self._min_distance = self._sampling_radius*MIN_DISTANCE_PERCENTAGE
         # queue with tuples of (waypoint, RoadOption)
-        self._waypoints_queue = deque(maxlen=4)
+        self._waypoint_resolution = 1  # distance between waypoints
+        # queue with tuples of (waypoint, RoadOption)
+        self._waypoints_queue = deque(maxlen=300)
         self._buffer_size = 1
         self._waypoint_buffer = deque(maxlen=self._buffer_size)
         # compute initial waypoints
-        self._waypoints_queue.append((self._current_waypoint.next(self._sampling_radius)[0], RoadOption.LANEFOLLOW))
+        self._waypoints_queue.append((self._current_waypoint.next(self._waypoint_resolution)[0], RoadOption.LANEFOLLOW))
         self._target_road_option = None
-        self.lane_change_flag = RoadOption.LANEFOLLOW
+        # compute initial waypoints
+
+        self.lane_change_flag = RoadOption.CHANGELANELEFT
         self.lane_change_start = None
         self.lane_change_duration = None
 
@@ -89,22 +93,12 @@ class Agent(object):
 
         self.trajectory_rotation_angle = math.radians(self._current_waypoint.transform.rotation.yaw)
         # fill waypoint trajectory queue
-        self._compute_next_waypoints(k=1)
+        self._make_waypoints_queue(self.lane_change_flag)
 
     def run_step(self, simulation_time):
-        # not enough waypoints in the horizon? => add more!
-        if len(self._waypoints_queue) < int(self._waypoints_queue.maxlen*0.5):
-            self._compute_next_waypoints(k=1, lane_change_flag=self.lane_change_flag)
-
+        finish=False
         if len(self._waypoints_queue) == 0:
-            control = carla.VehicleControl()
-            control.steer = 0.0
-            control.throttle = 0.0
-            control.brake = 1.0
-            control.hand_brake = False
-            control.manual_gear_shift = False
-
-            return control
+            finish=True
 
         #   Buffering the waypoints
         if not self._waypoint_buffer:
@@ -138,6 +132,7 @@ class Agent(object):
                 self._waypoint_buffer.popleft()
 
         self._vehicle.apply_control(self._control)
+        return finish
 
     def _get_current_data(self, simulation_time):
         transform = self._vehicle.get_transform()
@@ -151,7 +146,7 @@ class Agent(object):
         self.a_lateral_past = self.a_lateral
         self.a_lateral = -acceleration.x*math.sin(math.radians(self.yaw))+acceleration.y*math.cos(
             math.radians(self.yaw))
-        self.jerk = (self.a_lateral-self.a_lateral_past)*self._pid_timeperiod
+        self.jerk = (self.a_lateral-self.a_lateral_past)/self._pid_timeperiod
         self.d_lateral = misc.distance_point_to_line(self.target_waypoint, transform)
         self.volocity = misc.get_speed(self._vehicle)
 
@@ -177,53 +172,29 @@ class Agent(object):
                           self.jerk, self.d_lateral,
                           self.x, self.y]]
 
-    def _compute_next_waypoints(self, k=1, lane_change_flag=RoadOption.LANEFOLLOW):
-        """
-        Add new waypoints to the trajectory queue.
-        :param k: how many waypoints to compute
-        :return:
-        """
-        if lane_change_flag == RoadOption.LANEFOLLOW:
-            # check we do not overflow the queue
-            available_entries = self._waypoints_queue.maxlen-len(self._waypoints_queue)
-            k = min(available_entries, k)
-
-            for _ in range(k):
-                last_waypoint = self._waypoints_queue[-1][0]
-                next_waypoints = list(last_waypoint.next(self._sampling_radius))
-
-                # 在路口，两条路中间就会出现next_waypoints>1的情况
-                if len(next_waypoints) == 1:
-                    # only one option available ==> lanefollowing
-                    next_waypoint = next_waypoints[0]
-                    road_option = RoadOption.LANEFOLLOW
-                else:
-                    # random choice between the possible options
-                    road_options_list = _retrieve_options(
-                        next_waypoints, last_waypoint)
-                    road_option = random.choice(road_options_list)
-                    next_waypoint = next_waypoints[road_options_list.index(
-                        road_option)]
-
-                self._waypoints_queue.append((next_waypoint, road_option))
-
-        elif lane_change_flag == RoadOption.CHANGELANELEFT:
-            last_waypoint = self._waypoints_queue[-1][0]
-            next_waypoint = last_waypoint.get_left_lane().next(self._sampling_radius)[0]
-            road_option = RoadOption.CHANGELANELEFT
+    def _make_waypoints_queue(self, lane_change_flag):
+        last_waypoint = self._current_waypoint
+        for _ in range(45):
+            next_waypoint = list(last_waypoint.next(self._waypoint_resolution))[0]
+            road_option = RoadOption.LANEFOLLOW
             self._waypoints_queue.append((next_waypoint, road_option))
-            # 换道成功，恢复follow状态
-            self.lane_change_flag = RoadOption.LANEFOLLOW
-            self.change_times += 1
-        else:
             last_waypoint = self._waypoints_queue[-1][0]
-            next_waypoint = last_waypoint.get_right_lane().next(self._sampling_radius)[0]
-            road_option = RoadOption.CHANGELANELEFT
-            self._waypoints_queue.append((next_waypoint, road_option))
-            self.lane_change_flag = RoadOption.LANEFOLLOW
-            self.change_times += 1
 
-        misc.draw_waypoints(self._world, [next_waypoint])
+        if lane_change_flag == RoadOption.CHANGELANELEFT:
+            next_waypoint = last_waypoint.get_left_lane().next(self._waypoint_resolution)[0]
+            self._waypoints_queue.append((next_waypoint, lane_change_flag))
+            self.change_times += 1
+        elif lane_change_flag == RoadOption.CHANGELANERIGHT:
+            next_waypoint = last_waypoint.get_right_lane().next(self._waypoint_resolution)[0]
+            self._waypoints_queue.append((next_waypoint, lane_change_flag))
+            self.change_times += 1
+        last_waypoint = self._waypoints_queue[-1][0]
+
+        for _ in range(104):
+            next_waypoint = list(last_waypoint.next(self._waypoint_resolution))[0]
+            road_option = RoadOption.LANEFOLLOW
+            self._waypoints_queue.append((next_waypoint, road_option))
+            last_waypoint = self._waypoints_queue[-1][0]
 
 
 def _retrieve_options(list_waypoints, current_waypoint):

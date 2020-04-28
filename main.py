@@ -38,6 +38,7 @@ KLIST = np.linspace(43/540, 53/540, 11)
 LLIST = np.linspace(0.10, 0.14, 9)
 # BEST PARAMETER:
 # K=49/540 L=0.115
+# K:0.090741 L:0.115000 Time spend:2.350000 J:0.975387
 
 def plot_data(data):
     fontdict = {'weight': 'normal', 'size': 20}
@@ -124,19 +125,21 @@ if __name__ == '__main__':
             lane_change_agent = Agent(vehicle, PIDCONTROLLER_TIME_PERIOD)
             lane_change_agent.run_step(simulation_time)
 
-            while simulation_time < 25:  # 25s后跳出循环
-                world.tick()
-                world_snapshot = world.wait_for_tick()
-                simulation_time = world_snapshot.elapsed_seconds-start_world_time
-                lane_change_agent.run_step(simulation_time)
+            finish=False
+            while finish is False:  # 25s后跳出循环
+                try:
+                    world.tick()
+                    world_snapshot = world.wait_for_tick()
+                    simulation_time = world_snapshot.elapsed_seconds-start_world_time
+                    finish=lane_change_agent.run_step(simulation_time)
+                except RuntimeError:
+                    print("trying to reconnect")
+                    time.sleep(2.0)
                 # apply control and get data
-
-                if lane_change_agent.change_times == 0 and simulation_time > 7:
-                    lane_change_agent.lane_change_flag = RoadOption.CHANGELANELEFT
 
             data = np.array(lane_change_agent.data).transpose()
             J = 0.2*sum((data[3]/(0.3*9.8))**2*PIDCONTROLLER_TIME_PERIOD) \
-                +0.8*sum((data[5]/(3.5))**2*PIDCONTROLLER_TIME_PERIOD)
+                +0.8*sum((data[5]/3.5)**2*PIDCONTROLLER_TIME_PERIOD)
             print('K:%f'%K, 'L:%f'%L,
                   'Time spend:%f'%lane_change_agent.lane_change_duration, 'J:%f'%J)
 

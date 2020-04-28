@@ -29,20 +29,20 @@ parser.add_argument("--env_name", default="Carla_0.9.5")
 parser.add_argument('--tau', default=0.005, type=float)  # target smoothing coefficient
 parser.add_argument('--a_learning_rate', default=8*1e-5, type=float)
 parser.add_argument('--c_learning_rate', default=8.5*1e-5, type=float)
-parser.add_argument('--gamma', default=0.92, type=int)  # discounted factor
-parser.add_argument('--capacity', default=50000, type=int)  # replay buffer size
-parser.add_argument('--batch_size', default=64, type=int)  # mini batch size
-parser.add_argument('--exploration_noise', default=0.07, type=float)
+parser.add_argument('--gamma', default=0.95, type=int)  # discounted factor
+parser.add_argument('--capacity', default=20000, type=int)  # replay buffer size
+parser.add_argument('--batch_size', default=512, type=int)  # mini batch size
+parser.add_argument('--exploration_noise', default=0.7, type=float)
 parser.add_argument('--max_episode', default=20000, type=int)  # num of games
 parser.add_argument('--max_length_of_time', default=40, type=int)  # num of games
 parser.add_argument('--print_log', default=10, type=int)  # num of steps to print log
 parser.add_argument('--update_iteration', default=10, type=int)  # every step replay 10 batches for update
 
 # parser.add_argument('--target_update_interval', default=1, type=int)
-parser.add_argument('--load', default=False, type=bool)  # load model (only available on test mode)
+parser.add_argument('--load', default=True, type=bool)  # load model (only available on test mode)
 parser.add_argument('--seed', default=False, type=bool)
 parser.add_argument('--random_seed', default=9527, type=int)
-parser.add_argument('--test_iteration', default=10, type=int)
+parser.add_argument('--test_iteration', default=5, type=int)
 parser.add_argument('--sample_frequency', default=256, type=int)
 parser.add_argument('--log_interval', default=50, type=int)  # saving interval of steps
 args = parser.parse_args()
@@ -65,6 +65,8 @@ min_Val = torch.tensor(1e-7).float().to(device)  # min value
 directory = './exp2020-04-22-10-33-48./'
 if args.mode == 'train':
     directory = './exp'+time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))+'./'
+directory = './exp2020-04-22-10-33-48./'
+
 
 class Replay_buffer():
     '''
@@ -123,7 +125,6 @@ class Critic(nn.Module):
         self.l1 = nn.Linear(state_dim+action_dim, 45)
         self.l2 = nn.Linear(45, 30)
         self.l3 = nn.Linear(30, 1)
-
 
     def forward(self, x, u):
         x = F.relu(self.l1(torch.cat([x, u], 1)))
@@ -224,35 +225,47 @@ class DDPG(object):
 def main():
     ddpg_agent = DDPG(state_dim, action_dim, max_action)
     ep_r = 0
-    decay = 1
+    decay = 1e-3
     # n_noise = noise.OrnsteinUhlenbeckActionNoise(mu=0, sigma=0.7, theta=0.3, dt=0.05)
-    n_noise = noise.NormalActionNoise(mu=0, sigma=0.07)
+    n_noise = noise.NormalActionNoise(mu=0, sigma=0.7)
+    a = 0.43
+    b = 0.5
 
     if args.mode == 'test':
         # ddpg_agent.load()
         ddpg_agent.m_load()
+
         for i in range(args.test_iteration):
+            d_action = 0
+            dd_action = 0
             state = env.reset()
             for t in count():
                 try:
                     state[0] += 0.247/agent.D_LATERAL_RANGE
-                    action = ddpg_agent.select_action(state)
+                    # action = ddpg_agent.select_action(state).clip(
+                    #         -0.3, 0.1)
+                    select_action = ddpg_agent.select_action(state)
+                    action = a*select_action+b*d_action+(1-a-b)*dd_action
+                    dd_action = d_action
+                    d_action = action
+
                     next_state, reward, done, info = env.step(np.array(action, dtype=float))
                     ep_r += reward
 
                     # 超过最大时间或者完成轨迹追踪，一个episode结束
                     if env.simulation_time > args.max_length_of_time or info or done:
                         print(
-                            "Ep_i \t{}, the ep_r is \t{:0.2f}, the step is \t{},fail \t{}".format(i, ep_r, t, done))
+                            "Ep_i \t{}, the ep_r is \t{:0.5f}, the step is \t{},fail \t{}".format(i, ep_r, t, done))
                         ep_r = 0
+
                         break
                     state = next_state
                 except RuntimeError:
                     print("trying to reconnect")
                     time.sleep(2.0)
 
-        plot_data(np.array(env.lane_change_agent.data).transpose(),env.lane_change_agent)
-        print(np.array(env.lane_change_agent.data).transpose()[3])
+        plot_data(np.array(env.lane_change_agent.data).transpose(), env.lane_change_agent)
+        # print(np.array(env.lane_change_agent.data).transpose()[3])
         print(np.array(env.lane_change_agent.data).transpose()[5])
 
     elif args.mode == 'train':
@@ -260,29 +273,32 @@ def main():
         print("Collection Experience...")
         print("====================================")
 
-        max_epr=-1.3
+        max_epr = -1.3
         if args.load:
             ddpg_agent.load()
         for i in range(args.max_episode):
+            d_action = 0
+            dd_action = 0
             try:
                 state = env.reset()
                 for t in count():
                     try:
-                        action = ddpg_agent.select_action(state)
-
                         N = n_noise()
                         N *= decay
 
-                        action = (action+np.array(N)).clip(
+                        action = (ddpg_agent.select_action(state)+np.array(N)).clip(
                             env.action_space_low, env.action_space_high)
-                        # issue 3 add noise to action
-                        # action = (action+np.random.normal(0, args.exploration_noise, size=env.action_dim)).clip(
+                        # select_action = (action+np.array(N)).clip(
                         #     env.action_space_low, env.action_space_high)
+
+                        # action = a*select_action+b*d_action+(1-a-b)*dd_action
+                        # dd_action = d_action
+                        # d_action = action
 
                         next_state, reward, fail, info = env.step(np.array(action, dtype=float))
                         ep_r += reward
-                        if abs(env.data[5][-1])<0.25:
-                            reward+=(1-abs(env.data[5][-1])*4)*env.PIDCONTROLLER_TIME_PERIOD #提高小区域收敛精确度
+                        if abs(env.data[5][-1]) < 0.1:
+                            reward += (0.8-abs(env.data[5][-1])*8)*env.PIDCONTROLLER_TIME_PERIOD  # 提高小区域收敛精确度
 
                         if abs(state[0]-next_state[0])*agent.D_LATERAL_RANGE < 2.5:  # 去除d_lateral突变点
                             ddpg_agent.replay_buffer.push((state, next_state, action, reward, np.float(fail)))
@@ -297,14 +313,14 @@ def main():
                                     "Ep_i \t{}, the ep_r is \t{:0.2f}, the step is \t{},finish \t{}".format(
                                         i, ep_r, t, info))
                                 ddpg_agent.writer.add_scalar('N', N, global_step=i)
-                                if decay>1e-1:
-                                    decay *= 0.995
-
-                            if -0.8>ep_r>max_epr and info:
-                                max_epr=ep_r
-                                print("max_epr",max_epr)
-                                torch.save(ddpg_agent.actor.state_dict(), directory+'m_actor.pth')
-                                torch.save(ddpg_agent.critic.state_dict(), directory+'m_critic.pth')
+                                if decay > 1e-2:
+                                    decay *= 0.99
+                            if i > 38:
+                                if -0.8 > ep_r > max_epr and info:
+                                    max_epr = ep_r
+                                    print("max_epr", max_epr)
+                                    torch.save(ddpg_agent.actor.state_dict(), directory+'m_actor.pth')
+                                    torch.save(ddpg_agent.critic.state_dict(), directory+'m_critic.pth')
                             ep_r = 0
                             break
 

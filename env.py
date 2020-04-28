@@ -108,10 +108,10 @@ class Env:
 
         if abs(next_state[-1])*agent.DELTA_FI_RANGE > 60:
             fail = 1  # 撞击使速度<5,或直接掉头,或越出道路
-            reward -= 0.5
+            reward -= 1
         if abs(next_state[0]*agent.D_LATERAL_RANGE) > 4.5:
             fail = 1  # 撞击使速度<5,或直接掉头,或越出道路
-            reward -= 0.1
+            reward -= 1
         # info = 0
         # if self.lane_change_agent.lane_change_duration is not None:  # 换道结束
         #     info = 1

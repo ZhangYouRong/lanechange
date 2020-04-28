@@ -19,19 +19,20 @@ from torch.distributions import Normal
 from torch.utils.tensorboard import SummaryWriter
 import time
 import noise
+from plot import plot_data
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--mode', default='train', type=str)  # mode = 'train' or 'test'
+parser.add_argument('--mode', default='test', type=str)  # mode = 'train' or 'test'
 # Note that DDPG is feasible about hyper-parameters.
 # You should fine-tuning if you change to another environment.
 parser.add_argument("--env_name", default="Carla_0.9.5")
 parser.add_argument('--tau', default=0.005, type=float)  # target smoothing coefficient
 parser.add_argument('--a_learning_rate', default=8*1e-5, type=float)
 parser.add_argument('--c_learning_rate', default=8.5*1e-5, type=float)
-parser.add_argument('--gamma', default=0.95, type=int)  # discounted factor
+parser.add_argument('--gamma', default=0.92, type=int)  # discounted factor
 parser.add_argument('--capacity', default=50000, type=int)  # replay buffer size
 parser.add_argument('--batch_size', default=64, type=int)  # mini batch size
-parser.add_argument('--exploration_noise', default=0.7, type=float)
+parser.add_argument('--exploration_noise', default=0.07, type=float)
 parser.add_argument('--max_episode', default=20000, type=int)  # num of games
 parser.add_argument('--max_length_of_time', default=40, type=int)  # num of games
 parser.add_argument('--print_log', default=10, type=int)  # num of steps to print log
@@ -61,7 +62,7 @@ action_dim = env.action_dim
 max_action = float(env.max_action)
 min_Val = torch.tensor(1e-7).float().to(device)  # min value
 
-directory = './exp2020-04-04-10-30-14./'
+directory = './exp2020-04-27-18-21-16./'
 if args.mode == 'train':
     directory = './exp'+time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))+'./'
 
@@ -212,36 +213,54 @@ class DDPG(object):
         print("model has been loaded...")
         print("====================================")
 
+    def m_load(self):
+        self.actor.load_state_dict(torch.load(directory+'m_actor.pth'))
+        self.critic.load_state_dict(torch.load(directory+'m_critic.pth'))
+        print("====================================")
+        print("m_model has been loaded...")
+        print("====================================")
+
 
 def main():
     ddpg_agent = DDPG(state_dim, action_dim, max_action)
     ep_r = 0
     decay = 1
     # n_noise = noise.OrnsteinUhlenbeckActionNoise(mu=0, sigma=0.7, theta=0.3, dt=0.05)
-    n_noise = noise.NormalActionNoise(mu=0, sigma=0.7)
+    n_noise = noise.NormalActionNoise(mu=0, sigma=0.07)
 
     if args.mode == 'test':
-        ddpg_agent.load()
+        # ddpg_agent.load()
+        ddpg_agent.m_load()
         for i in range(args.test_iteration):
             state = env.reset()
             for t in count():
-                action = ddpg_agent.select_action(state)
-                next_state, reward, done, info = env.step(np.array(action, dtype=float))
-                ep_r += reward
+                try:
+                    state[0] += 0.0988/agent.D_LATERAL_RANGE
+                    action = ddpg_agent.select_action(state)
+                    next_state, reward, done, info = env.step(np.array(action, dtype=float))
+                    ep_r += reward
 
-                # 超过最大时间或者完成轨迹追踪，一个episode结束
-                if env.simulation_time > args.max_length_of_time or info:
-                    print(
-                        "Ep_i \t{}, the ep_r is \t{:0.2f}, the step is \t{},done \t{}".format(i, ep_r, t, done))
-                    ep_r = 0
-                    break
-                state = next_state
+                    # 超过最大时间或者完成轨迹追踪，一个episode结束
+                    if env.simulation_time > args.max_length_of_time or info or done:
+                        print(
+                            "Ep_i \t{}, the ep_r is \t{:0.2f}, the step is \t{},fail \t{}".format(i, ep_r, t, done))
+                        ep_r = 0
+                        break
+                    state = next_state
+                except RuntimeError:
+                    print("trying to reconnect")
+                    time.sleep(2.0)
+
+        plot_data(np.array(env.lane_change_agent.data).transpose(),env.lane_change_agent)
+        print(np.array(env.lane_change_agent.data).transpose()[3])
+        print(np.array(env.lane_change_agent.data).transpose()[5])
 
     elif args.mode == 'train':
         print("====================================")
         print("Collection Experience...")
         print("====================================")
 
+        max_epr=-1.3
         if args.load:
             ddpg_agent.load()
         for i in range(args.max_episode):
@@ -262,6 +281,9 @@ def main():
 
                         next_state, reward, fail, info = env.step(np.array(action, dtype=float))
                         ep_r += reward
+                        if abs(env.data[5][-1])<0.25:
+                            reward+=(1-abs(env.data[5][-1])*4)*env.PIDCONTROLLER_TIME_PERIOD #提高小区域收敛精确度
+
                         if abs(state[0]-next_state[0])*agent.D_LATERAL_RANGE < 2.5:  # 去除d_lateral突变点
                             ddpg_agent.replay_buffer.push((state, next_state, action, reward, np.float(fail)))
 
@@ -275,10 +297,14 @@ def main():
                                     "Ep_i \t{}, the ep_r is \t{:0.2f}, the step is \t{},finish \t{}".format(
                                         i, ep_r, t, info))
                                 ddpg_agent.writer.add_scalar('N', N, global_step=i)
+                                if decay>1e-1:
+                                    decay *= 0.995
 
-
-                                decay *= 0.98
-                                # args.exploration_noise *= 0.995
+                            if -0.8>ep_r>max_epr and info:
+                                max_epr=ep_r
+                                print("max_epr",max_epr)
+                                torch.save(ddpg_agent.actor.state_dict(), directory+'m_actor.pth')
+                                torch.save(ddpg_agent.critic.state_dict(), directory+'m_critic.pth')
                             ep_r = 0
                             break
 

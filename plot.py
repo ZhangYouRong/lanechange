@@ -29,7 +29,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 
 
-def plot_data(data):
+def plot_data(data,lane_change_agent):
     fontdict = {'weight': 'normal', 'size': 20}
     plt.figure(figsize=(16, 9))
     ax1 = plt.subplot(3, 2, 1)  # （行，列，活跃区）

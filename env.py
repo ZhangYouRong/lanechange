@@ -24,9 +24,9 @@ class Env:
 
     observation_space_dim = 2  # 横向误差和航向误差
     action_dim = 1  # steer
-    max_action = 1  # max steering angle
-    action_space_low = -1
-    action_space_high = 1
+    max_action = 0.1  # max steering angle
+    action_space_low = -0.1
+    action_space_high = 0.1
 
     def __init__(self):
         client = carla.Client('localhost', 2000)
@@ -78,6 +78,7 @@ class Env:
         self.episode_start_time = tick.elapsed_seconds
         self.simulation_time = 0
         self.lane_change_agent = agent.Agent(self.vehicle, self.PIDCONTROLLER_TIME_PERIOD)
+        self.lane_change_agent.get_current_data(self.simulation_time)
         while self.simulation_time < 2.5:
             next_state, _, _, _ = self.step([0])  # 去除一开始没加速的S,A,R,S'数据
         # next_state, _, _, _ = self.step([0])  # 去除一开始没加速的S,A,R,S'数据
@@ -97,18 +98,20 @@ class Env:
         # if self.lane_change_agent.change_times == 0 and self.simulation_time > 7:
         #     self.lane_change_agent.lane_change_flag = agent.RoadOption.CHANGELANELEFT
 
-        data = np.array(self.lane_change_agent.data).transpose()
-        reward = -(0.2*(data[3][-1]/(0.3*9.8))**2*self.PIDCONTROLLER_TIME_PERIOD \
-                   +0.8*(data[5][-1]/3.5)**2*self.PIDCONTROLLER_TIME_PERIOD)
+        self.data = np.array(self.lane_change_agent.data).transpose()
+        reward = -(0.2*(self.data[3][-1]/(0.3*9.8))**2*self.PIDCONTROLLER_TIME_PERIOD \
+                   +0.8*(self.data[5][-1]/3.5)**2*self.PIDCONTROLLER_TIME_PERIOD)
 
         # print('K:%f'%K, 'L:%f'%L,
         #       'Time spend:%f'%lane_change_agent.lane_change_duration, 'J:%f'%J)
         fail = 0
 
-        if abs(next_state[-1])*agent.DELTA_FI_RANGE > 60 or \
-                abs(next_state[0]*agent.D_LATERAL_RANGE) > 4.5:
+        if abs(next_state[-1])*agent.DELTA_FI_RANGE > 30:
             fail = 1  # 撞击使速度<5,或直接掉头,或越出道路
-            reward -= 1
+            reward -= 0.5
+        if abs(next_state[0]*agent.D_LATERAL_RANGE) > 4.5:
+            fail = 1  # 撞击使速度<5,或直接掉头,或越出道路
+            reward -= 0.1
         # info = 0
         # if self.lane_change_agent.lane_change_duration is not None:  # 换道结束
         #     info = 1

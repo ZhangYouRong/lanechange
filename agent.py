@@ -141,7 +141,7 @@ class Agent(object):
         self.a_lateral_past = self.a_lateral
         self.a_lateral = -acceleration.x*math.sin(math.radians(self.yaw))+acceleration.y*math.cos(
             math.radians(self.yaw))
-        self.jerk = (self.a_lateral-self.a_lateral_past)*self._pid_timeperiod
+        self.jerk = (self.a_lateral-self.a_lateral_past)/self._pid_timeperiod
         self.d_lateral = misc.distance_point_to_line(self.target_waypoint, transform)
         self.volocity = misc.get_speed(self._vehicle)
 

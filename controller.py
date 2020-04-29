@@ -16,7 +16,7 @@ import numpy as np
 import carla
 from misc import get_speed, distance_point_to_line
 
-STEER_FILTER = 0.3 # 控制转角=STEER_FILTER*现转角+(1-STEER_FILTER)*过去转角
+STEER_FILTER = 1 # 控制转角=STEER_FILTER*现转角+(1-STEER_FILTER)*过去转角
 
 
 class VehiclePIDController():

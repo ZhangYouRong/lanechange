@@ -96,6 +96,8 @@ class Agent(object):
         finish=False
         if len(self._waypoints_queue) == 0:
             finish=True
+        if simulation_time>40:
+            finish = True
 
         #   Buffering the waypoints
         if not self._waypoint_buffer:

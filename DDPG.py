@@ -31,7 +31,7 @@ parser.add_argument('--a_learning_rate', default=8*1e-5, type=float)
 parser.add_argument('--c_learning_rate', default=8.5*1e-5, type=float)
 parser.add_argument('--gamma', default=0.95, type=int)  # discounted factor
 parser.add_argument('--capacity', default=20000, type=int)  # replay buffer size
-parser.add_argument('--batch_size', default=512, type=int)  # mini batch size
+parser.add_argument('--batch_size', default=64, type=int)  # mini batch size
 parser.add_argument('--exploration_noise', default=0.7, type=float)
 parser.add_argument('--max_episode', default=20000, type=int)  # num of games
 parser.add_argument('--max_length_of_time', default=40, type=int)  # num of games
@@ -39,7 +39,7 @@ parser.add_argument('--print_log', default=10, type=int)  # num of steps to prin
 parser.add_argument('--update_iteration', default=10, type=int)  # every step replay 10 batches for update
 
 # parser.add_argument('--target_update_interval', default=1, type=int)
-parser.add_argument('--load', default=True, type=bool)  # load model (only available on test mode)
+parser.add_argument('--load', default=False, type=bool)  # load model (only available on test mode)
 parser.add_argument('--seed', default=False, type=bool)
 parser.add_argument('--random_seed', default=9527, type=int)
 parser.add_argument('--test_iteration', default=5, type=int)
@@ -65,7 +65,7 @@ min_Val = torch.tensor(1e-7).float().to(device)  # min value
 directory = './exp2020-04-22-10-33-48./'
 if args.mode == 'train':
     directory = './exp'+time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))+'./'
-directory = './exp2020-04-22-10-33-48./'
+
 
 
 class Replay_buffer():
@@ -225,7 +225,7 @@ class DDPG(object):
 def main():
     ddpg_agent = DDPG(state_dim, action_dim, max_action)
     ep_r = 0
-    decay = 1e-3
+    decay = 1
     # n_noise = noise.OrnsteinUhlenbeckActionNoise(mu=0, sigma=0.7, theta=0.3, dt=0.05)
     n_noise = noise.NormalActionNoise(mu=0, sigma=0.7)
     a = 0.43
@@ -313,7 +313,7 @@ def main():
                                     "Ep_i \t{}, the ep_r is \t{:0.2f}, the step is \t{},finish \t{}".format(
                                         i, ep_r, t, info))
                                 ddpg_agent.writer.add_scalar('N', N, global_step=i)
-                                if decay > 1e-2:
+                                if decay > 1e-3:
                                     decay *= 0.99
                             if i > 38:
                                 if -0.8 > ep_r > max_epr and info:

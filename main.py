@@ -29,13 +29,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-TOWN = 'Town03'
+TOWN = 'Town04'
 VEHICLE_TYPE = 'vehicle.tesla.model3'
 VEHICLE_COLOR_RGB = '255,255,255'
-VEHICLE_START_LOCATION = {'x': 46, 'y': 7.2, 'z': 0}  # 我是通过manual_control.py手动测的坐标
+VEHICLE_START_LOCATION = {'x': -9.8, 'y': -186.6, 'z': 0}  # 我是通过manual_control.py手动测的坐标
 PIDCONTROLLER_TIME_PERIOD = 0.05  # 0.05s
-KLIST = np.linspace(0.02, 0.17, 16)
-LLIST = np.linspace(0.05, 0.20, 16)
+KLIST = np.linspace(43/540, 55/540, 14)
+LLIST = np.linspace(0.08, 0.13, 10)
 # BEST PARAMETER:
 # K=49/540 L=0.115
 # K:0.090741 L:0.115000 Time spend:2.350000 J:0.975387

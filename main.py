@@ -36,31 +36,38 @@ PIDCONTROLLER_TIME_PERIOD = 0.05  # 0.05s
 
 def plot_data(data):
     fontdict = {'weight': 'normal', 'size': 20}
-    plt.figure(figsize=(16, 9))
-    ax1 = plt.subplot(3, 2, 1)  # （行，列，活跃区）
+    plt.rcParams['font.sans-serif'] = ['SimHei']
+    plt.rcParams['axes.unicode_minus'] = False
+
     plt.plot(data[0], data[1], color='b')
     plt.xlabel('t (s)', fontdict)
     plt.ylabel('Volocity (km/h)', fontdict)
+    plt.title('车速V$_{0}$随时间t变化图')
+    plt.show()
 
-    ax2 = plt.subplot(3, 2, 2)
+    plt.figure(figsize=(12, 9))
+    ax2 = plt.subplot(2, 2, 1)
+    ax2.set_title('方向盘转角s随时间t变化图')
     plt.plot(data[0], data[2], color='g')
     plt.xlabel('t (s)', fontdict)
     plt.ylabel('steer (-1,1)', fontdict)
 
-    ax3 = plt.subplot(3, 2, 3)
+    ax3 = plt.subplot(2, 2, 2)
+    ax3.set_title('侧向加速度a$_{lateral}$随时间t变化图')
     plt.plot(data[0], data[3], color='y')
     plt.xlabel('t (s)', fontdict)
     plt.ylabel('a$_{lateral}$ (m/s$^2$)', fontdict)
 
-    ax4 = plt.subplot(3, 2, 4)
-    plt.plot(data[0], data[4], color='c')
-    plt.xlabel('t (s)', fontdict)
-    plt.ylabel('jerk (m/s$^3$)', fontdict)
+    # ax4 = plt.subplot(3, 2, 4)
+    # plt.plot(data[0], data[4], color='c')
+    # plt.xlabel('t (s)', fontdict)
+    # plt.ylabel('jerk (m/s$^3$)', fontdict)
 
-    ax5 = plt.subplot(3, 2, 5)
+    ax5 = plt.subplot(2, 2, 3)
+    ax5.set_title('侧向误差e随时间t变化图')
     plt.plot(data[0], data[5], color='r')
     plt.xlabel('t (s)', fontdict)
-    plt.ylabel('d$_{lateral}$ (m)', fontdict)
+    plt.ylabel('e (m)', fontdict)
 
     angle = lane_change_agent.trajectory_rotation_angle
     x = data[6]*math.cos(angle)+data[7]*math.sin(angle)
@@ -68,7 +75,8 @@ def plot_data(data):
     delta_x = x-x[0]
     delta_y = y-y[0]
 
-    ax5 = plt.subplot(3, 2, 6)
+    ax6 = plt.subplot(2, 2, 4)
+    ax6.set_title('车辆实际运动路径图')
     plt.plot(delta_x, delta_y, color='m')
     plt.xlabel('x (m)', fontdict)
     plt.ylabel('y (m)', fontdict)

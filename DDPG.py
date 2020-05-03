@@ -19,7 +19,7 @@ from torch.distributions import Normal
 from torch.utils.tensorboard import SummaryWriter
 import time
 import noise
-from plot import plot_data
+from plot import plot_data, plot_data_essay, plot_heatmap
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--mode', default='test', type=str)  # mode = 'train' or 'test'
@@ -30,7 +30,7 @@ parser.add_argument('--tau', default=0.005, type=float)  # target smoothing coef
 parser.add_argument('--a_learning_rate', default=8*1e-5, type=float)
 parser.add_argument('--c_learning_rate', default=8.5*1e-5, type=float)
 parser.add_argument('--gamma', default=0.95, type=int)  # discounted factor
-parser.add_argument('--capacity', default=20000, type=int)  # replay buffer size
+parser.add_argument('--capacity', default=50000, type=int)  # replay buffer size
 parser.add_argument('--batch_size', default=64, type=int)  # mini batch size
 parser.add_argument('--exploration_noise', default=0.7, type=float)
 parser.add_argument('--max_episode', default=20000, type=int)  # num of games
@@ -65,7 +65,6 @@ min_Val = torch.tensor(1e-7).float().to(device)  # min value
 directory = './exp2020-04-22-10-33-48./'
 if args.mode == 'train':
     directory = './exp'+time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime(time.time()))+'./'
-
 
 
 class Replay_buffer():
@@ -146,6 +145,10 @@ class DDPG(object):
         self.critic_optimizer = optim.Adam(self.critic.parameters(), args.c_learning_rate)
         self.replay_buffer = Replay_buffer()
         self.writer = SummaryWriter(directory)
+
+        self.writer.add_graph(self.actor, torch.FloatTensor([[0, 0]]).to(device))
+        self.writer.add_graph(self.critic, (torch.FloatTensor([[0, 0]]).to(device),
+                                            torch.FloatTensor([[0]]).to(device)))
 
         self.num_critic_update_iteration = 0
         self.num_actor_update_iteration = 0
@@ -264,7 +267,7 @@ def main():
                     print("trying to reconnect")
                     time.sleep(2.0)
 
-        plot_data(np.array(env.lane_change_agent.data).transpose(), env.lane_change_agent)
+        plot_data_essay(np.array(env.lane_change_agent.data).transpose(), env.lane_change_agent)
         # print(np.array(env.lane_change_agent.data).transpose()[3])
         print(np.array(env.lane_change_agent.data).transpose()[5])
 
@@ -356,6 +359,18 @@ def main():
             while time.time()-last_time < 0.05:
                 pass
             last_time = time.time()
+
+    elif args.mode == 'heat':
+        ddpg_agent.m_load()
+        d_list = np.linspace(-4.5, 4.5, 91)
+        fi_list = np.linspace(-60, 60, 121)
+        data=np.zeros((91,121))
+        for i, d in enumerate(d_list):
+            for j, fi in enumerate(fi_list):
+                state = np.array((d/agent.D_LATERAL_RANGE, fi/agent.DELTA_FI_RANGE))
+                state[0] += 0.247/agent.D_LATERAL_RANGE
+                data[i, j] = ddpg_agent.select_action(state)
+        plot_heatmap(data,d_list,fi_list)
 
 
     else:

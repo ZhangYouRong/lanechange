@@ -80,9 +80,11 @@ def plot_data(data):
 
     # ax6 = plt.subplot(2, 2, 4)
     # ax6.set_title('车辆实际运动路径图')
-    plt.plot(delta_x, delta_y, color='m')
+    plt.plot(delta_x, delta_y, color='b')
     data = np.load('D:\software\CARLA_0.9.5\workspace\lanechange\exp2020-04-22-10-33-48\ddpg.npy')
-    plt.plot(data)
+    plt.plot(data[1],data[0],color='r')
+    label = ["传统算法路径", "强化学习优化路径"]
+    plt.legend(label,fontsize=16)
     plt.xlabel('x (m)', fontdict)
     plt.ylabel('y (m)', fontdict)
     plt.show()
